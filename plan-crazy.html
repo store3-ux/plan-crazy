@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบตารางปฏิทินส่งเครื่อง </title>
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- SheetJS สำหรับ Export Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <style>
+        body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        
+        .calendar-table { background: white; table-layout: fixed; border-collapse: separate; border-spacing: 0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        .calendar-table th { background-color: #2c3e50; color: white; text-align: center; padding: 12px; font-size: 1.05rem; }
+        .calendar-day { height: 165px; vertical-align: top; border: 1px solid #e9ecef; padding: 8px; position: relative; overflow-y: auto; }
+        .day-number { font-weight: bold; color: #495057; margin-bottom: 6px; font-size: 1rem; }
+        .today-highlight { background-color: #eef7ff; }
+
+        /* การ์ดรายการในปฏิทิน */
+        .delivery-card { font-size: 0.82rem; border-radius: 8px; padding: 8px; margin-bottom: 6px; background-color: #ffffff; box-shadow: 0 2px 5px rgba(0,0,0,0.08); border: 1px solid #e2e8f0; border-left: 5px solid #6c757d; cursor: pointer; transition: all 0.2s; }
+        .delivery-card:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.12); }
+        
+        /* สถานะการ์ด */
+        .delivery-card.urgent { background-color: #fff8e6; border-left-color: #dc3545; }
+        .delivery-card.completed { background-color: #e8f5e9; border-left-color: #198754; }
+        .delivery-card.cancelled { background-color: #f1f5f9; border-left-color: #64748b; opacity: 0.65; }
+        .delivery-card.cancelled .clinic-title, .delivery-card.cancelled .item-detail { text-decoration: line-through; color: #64748b !important; }
+
+        .clinic-title { font-weight: bold; color: #1a252f; display: block; font-size: 0.9rem; }
+
+        /* ปรับช่อง Input ให้ใหญ่ยาว อ่านง่าย */
+        .large-input { height: 44px !important; font-size: 0.95rem !important; border: 1.5px solid #cbd5e1 !important; border-radius: 8px !important; padding: 8px 12px !important; background-color: #ffffff; }
+        .large-input:focus { border-color: #0d6efd !important; box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15) !important; background-color: #fff; }
+        .large-textarea { font-size: 0.92rem !important; border: 1.5px solid #cbd5e1 !important; border-radius: 8px !important; background-color: #ffffff; }
+        .form-label-custom { font-weight: 700; color: #334155; font-size: 0.88rem; margin-bottom: 3px; }
+
+        /* Fast Paste Modal Style */
+        .paste-container { display: flex; gap: 20px; }
+        .paste-left { flex: 1; border-right: 1px solid #e2e8f0; padding-right: 20px; }
+        .paste-right { flex: 1.2; }
+        .paste-textarea { border: 2px solid #ffc107 !important; border-radius: 8px; font-size: 0.9rem; }
+        .preview-box { background-color: #f8fafc; border-radius: 10px; padding: 15px; border: 1px dashed #cbd5e1; }
+
+        /* Style สำหรับหน้าต่างเลือกปี/เดือนย้อนหลัง */
+        .picker-modal .modal-content { background-color: #262626; color: #ffffff; border-radius: 12px; }
+        .picker-modal .modal-header { border-bottom: 1px solid #3d3d3d; }
+        .picker-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 15px; text-align: center; }
+        .picker-item { 
+            display: flex; align-items: center; justify-content: center; 
+            height: 65px; width: 65px; margin: 0 auto; border-radius: 50%; 
+            font-size: 1.05rem; cursor: pointer; transition: all 0.2s; color: #d1d5db; 
+        }
+        .picker-item:hover { background-color: #3a3a3a; color: #ffffff; }
+        .picker-item.active { background-color: #ff5252; color: #ffffff; font-weight: bold; }
+        .picker-item.out-range { color: #666666; }
+
+        /* สถานะการเชื่อมต่อ Database */
+        .sync-badge { font-size: 0.8rem; padding: 4px 8px; border-radius: 12px; }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid px-4 py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-3 bg-white p-3 rounded-3 shadow-sm">
+        <div>
+            <h3 class="fw-bold text-primary m-0">📅 ตารางปฏิทินวางแผนจัดส่งเครื่อง <span id="syncStatus" class="badge bg-success sync-badge">🟢 ออนไลน์ Realtime</span></h3>
+            <small class="text-muted">ระบบวางแผนจัดส่งสินค้าประจำเดือน (ใช้งานร่วมกันหลายคน)</small>
+        </div>
+        <div>
+            <button class="btn btn-warning btn-lg me-2 fw-bold text-dark" data-bs-toggle="modal" data-bs-target="#quickPasteModal">
+                ⚡ วางข้อความอัตโนมัติ (Fast Paste)
+            </button>
+            <button class="btn btn-primary btn-lg me-2 fw-bold" data-bs-toggle="modal" data-bs-target="#addModal">
+                ➕ เพิ่มรายการ
+            </button>
+            <button onclick="exportToExcel()" class="btn btn-success btn-lg fw-bold">
+                📊 Export Excel
+            </button>
+        </div>
+    </div>
+
+    <!-- แถบควบคุมเดือน/ปี -->
+    <div class="d-flex justify-content-between align-items-center mb-3 bg-white p-3 rounded-3 shadow-sm">
+        <button onclick="changeMonth(-1)" class="btn btn-outline-secondary fw-bold">◀ เดือนก่อนหน้า</button>
+        
+        <button onclick="openYearPickerModal()" class="btn btn-light border px-4 py-2" title="คลิกเพื่อเลือกเดือน/ปี ย้อนหลัง">
+            <h4 id="monthYearDisplay" class="fw-bold m-0 text-primary"></h4>
+            <small class="text-muted" style="font-size: 0.75rem;">(👇 คลิกตรงนี้เพื่อเลือกปี/เดือนย้อนหลัง)</small>
+        </button>
+
+        <div>
+            <button onclick="goToToday()" class="btn btn-outline-primary fw-bold me-2">วันนี้</button>
+            <button onclick="changeMonth(1)" class="btn btn-outline-secondary fw-bold">เดือนถัดไป ▶</button>
+        </div>
+    </div>
+
+    <!-- คำอธิบายสถานะ -->
+    <div class="mb-3 d-flex gap-3 flex-wrap">
+        <span class="badge bg-warning text-dark p-2 fs-6">⚠️ ยังไม่จัด (ใกล้ส่งภายใน 3 วัน)</span>
+        <span class="badge bg-white text-dark border p-2 fs-6">⚪ ยังไม่จัด (รอส่ง)</span>
+        <span class="badge bg-success p-2 fs-6">🟢 จัดเสร็จเรียบร้อย</span>
+        <span class="badge bg-secondary p-2 fs-6">🚫 ยกเลิกแพลน</span>
+    </div>
+
+    <!-- ตารางปฏิทิน -->
+    <div class="table-responsive">
+        <table class="table calendar-table">
+            <thead>
+                <tr>
+                    <th style="width: 14.28%;">อาทิตย์</th>
+                    <th style="width: 14.28%;">จันทร์</th>
+                    <th style="width: 14.28%;">อังคาร</th>
+                    <th style="width: 14.28%;">พุธ</th>
+                    <th style="width: 14.28%;">พฤหัสบดี</th>
+                    <th style="width: 14.28%;">ศุกร์</th>
+                    <th style="width: 14.28%;">เสาร์</th>
+                </tr>
+            </thead>
+            <tbody id="calendarBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal เลือกปี/เดือนย้อนหลัง -->
+<div class="modal fade picker-modal" id="yearPickerModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header d-flex justify-content-between align-items-center">
+                <h5 class="modal-title fw-bold" id="pickerTitle">2020 - 2029</h5>
+                <div>
+                    <button onclick="shiftDecade(-10)" class="btn btn-sm btn-outline-light me-1">▲</button>
+                    <button onclick="shiftDecade(10)" class="btn btn-sm btn-outline-light me-2">▼</button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+            </div>
+            <div class="modal-body p-3">
+                <div id="pickerGrid" class="picker-grid"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 1: วางข้อความอัตโนมัติจาก LINE (Fast Paste Preview) -->
+<div class="modal fade" id="quickPasteModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
+            <div class="modal-header bg-warning text-dark p-3">
+                <h4 class="modal-title fw-bold">⚡ เพิ่มข้อมูลโดยกรอกอัตโนมัติ (Fast Paste Preview)</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="paste-container flex-column flex-lg-row">
+                    <!-- ฝั่งซ้าย: กล่องวางข้อความ -->
+                    <div class="paste-left">
+                        <label class="form-label-custom text-primary fs-6">กรอก/วางข้อความอัตโนมัติ (จาก LINE)</label>
+                        <textarea id="rawTextPaste" class="form-control paste-textarea p-3" rows="15" 
+                            placeholder="วางข้อความที่นี่ ระบบจะถอดรหัสแล้วพรีวิวทางฝั่งขวาให้อัตโนมัติทันที..." oninput="autoParseAndPreview()"></textarea>
+                        <small class="text-muted mt-2 d-block">* ระบบจะแยกข้อมูลคลินิก, วันที่, เครื่อง, SN, UPS และหมายเหตุ ให้ทันทีที่พิมพ์/วาง</small>
+                    </div>
+
+                    <!-- ฝั่งขวา: ช่องพรีวิวและแก้ไขข้อมูลก่อนบันทึก -->
+                    <div class="paste-right">
+                        <label class="form-label-custom text-success fs-6 mb-2">🔍 ตรวจสอบและแก้ไขข้อมูลที่ถอดรหัสได้ก่อนบันทึก:</label>
+                        <div class="preview-box">
+                            <div class="row g-2 mb-2">
+                                <div class="col-md-7">
+                                    <label class="form-label-custom"><span class="text-danger">*</span> 1. ชื่อคลินิก/ลูกค้า</label>
+                                    <input type="text" class="form-control large-input" id="pvCustomer">
+                                </div>
+                                <div class="col-md-5">
+                                    <label class="form-label-custom">สาขา/สถานที่ส่ง</label>
+                                    <input type="text" class="form-control large-input" id="pvBranch">
+                                </div>
+                            </div>
+
+                            <div class="row g-2 mb-2">
+                                <div class="col-md-7">
+                                    <label class="form-label-custom"><span class="text-danger">*</span> 2. กำหนดส่ง (Plan)</label>
+                                    <input type="date" class="form-control large-input" id="pvDate">
+                                </div>
+                                <div class="col-md-5">
+                                    <label class="form-label-custom">ผู้ขาย (Sale)</label>
+                                    <input type="text" class="form-control large-input" id="pvSale">
+                                </div>
+                            </div>
+
+                            <div class="row g-2 mb-2">
+                                <div class="col-md-7">
+                                    <label class="form-label-custom"><span class="text-danger">*</span> 3. เครื่องอะไร</label>
+                                    <input type="text" class="form-control large-input" id="pvMachine">
+                                </div>
+                                <div class="col-md-5">
+                                    <label class="form-label-custom">SN เครื่อง</label>
+                                    <input type="text" class="form-control large-input" id="pvMachineSn">
+                                </div>
+                            </div>
+
+                            <div class="row g-2 mb-2">
+                                <div class="col-md-7">
+                                    <label class="form-label-custom">4. UPS อะไร</label>
+                                    <input type="text" class="form-control large-input" id="pvUps">
+                                </div>
+                                <div class="col-md-5">
+                                    <label class="form-label-custom">SN UPS</label>
+                                    <input type="text" class="form-control large-input" id="pvUpsSn">
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label-custom">5. หมายเหตุเพิ่มเติม</label>
+                                <textarea class="form-control large-textarea" id="pvNotes" rows="2"></textarea>
+                            </div>
+
+                            <div class="d-flex gap-2">
+                                <button onclick="saveFastPaste()" class="btn btn-warning btn-lg w-100 fw-bold fs-5 text-dark">
+                                    💾 บันทึกและใช้งานออนไลน์
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 2: หน้าต่างกรอกข้อมูลหลัก -->
+<div class="modal fade" id="addModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
+            <div class="modal-header bg-primary text-white p-3">
+                <h4 class="modal-title fw-bold">เพิ่มรายการจัดส่ง</h4>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="addDeliveryForm">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label-custom">1. ชื่อบริษัท / คลินิก / ลูกค้า</label>
+                            <input type="text" class="form-control large-input" id="customer" required placeholder="เช่น PPPP clinic">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label-custom">สาขา / สถานที่จัดส่ง</label>
+                            <input type="text" class="form-control large-input" id="branch" required placeholder="เช่น กทม">
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label-custom">2. วันที่กำหนดส่ง (Plan)</label>
+                            <input type="date" class="form-control large-input" id="deliveryDate" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label-custom">ผู้ขาย (Sale)</label>
+                            <input type="text" class="form-control large-input" id="sale" placeholder="เช่น ยย">
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-7">
+                            <label class="form-label-custom">3. เครื่องอะไร</label>
+                            <input type="text" class="form-control large-input" id="machine" required placeholder="เช่น ULTRAFORMER III LIGHT">
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label-custom">SN เครื่อง</label>
+                            <input type="text" class="form-control large-input" id="machineSn" placeholder="เช่น CLR26F012">
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-7">
+                            <label class="form-label-custom">4. UPS อะไร</label>
+                            <input type="text" class="form-control large-input" id="ups" placeholder="เช่น UPS 1KVA">
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label-custom">SN UPS</label>
+                            <input type="text" class="form-control large-input" id="upsSn" placeholder="เช่น LTC2800447">
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label-custom">5. หมายเหตุเพิ่มเติม</label>
+                        <textarea class="form-control large-textarea" id="notes" rows="3" placeholder="ระบุหมายเหตุ หรือรายละเอียดเพิ่มเติมที่นี่..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold fs-5 py-2">บันทึกข้อมูลลงตารางออนไลน์</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 3: แสดงรายละเอียด / เปลี่ยนสถานะ / ยกเลิกแพลน -->
+<div class="modal fade" id="detailModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title fw-bold" id="detailTitle">รายละเอียดรายการ</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4" id="detailBody"></div>
+            <div class="modal-footer bg-light d-flex justify-content-between">
+                <button type="button" id="btnDeletePlan" class="btn btn-outline-danger">🗑️ ลบรายการทิ้ง</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Firebase SDK Module -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getDatabase, ref, push, set, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+    // 1. Firebase Config ที่อัปเดตเรียบร้อยแล้ว
+    const firebaseConfig = {
+        apiKey: "AIzaSyDXXuAMiGqetHXy-O9exynALV_DssRnB44",
+        authDomain: "plan-crazy.firebaseapp.com",
+        databaseURL: "https://plan-crazy-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "plan-crazy",
+        storageBucket: "plan-crazy.firebasestorage.app",
+        messagingSenderId: "107113278566",
+        appId: "1:107113278566:web:7c79018268b10c2f443ba7",
+        measurementId: "G-E8KH5L6JYF"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const dbRef = ref(db, 'delivery_items');
+
+    const thaiMonths = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
+    const shortThaiMonths = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+    
+    let currentDate = new Date(); 
+    let viewDate = new Date();   
+    let startDecadeYear = 2020;
+    let selectedTempYear = null;
+
+    let items = [];
+
+    // ดึงข้อมูล Realtime จาก Firebase
+    onValue(dbRef, (snapshot) => {
+        const data = snapshot.val();
+        items = [];
+        if (data) {
+            Object.keys(data).forEach(key => {
+                items.push({ id: key, ...data[key] });
+            });
+        }
+        renderCalendar();
+    });
+
+    window.renderCalendar = function() {
+        const calendarBody = document.getElementById('calendarBody');
+        calendarBody.innerHTML = '';
+
+        const year = viewDate.getFullYear();
+        const month = viewDate.getMonth();
+
+        document.getElementById('monthYearDisplay').innerText = `${thaiMonths[month]} พ.ศ. ${year + 543}`;
+
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        let date = 1;
+        for (let i = 0; i < 6; i++) {
+            let row = document.createElement('tr');
+            let hasDateInRow = false;
+
+            for (let j = 0; j < 7; j++) {
+                let cell = document.createElement('td');
+                cell.className = 'calendar-day';
+
+                if (i === 0 && j < firstDay) {
+                    cell.innerHTML = '';
+                } else if (date > daysInMonth) {
+                    cell.innerHTML = '';
+                } else {
+                    hasDateInRow = true;
+                    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(date).padStart(2, '0')}`;
+                    
+                    const isToday = (date === currentDate.getDate() && month === currentDate.getMonth() && year === currentDate.getFullYear());
+                    if (isToday) cell.classList.add('today-highlight');
+
+                    cell.innerHTML = `<div class="day-number ${isToday ? 'text-primary fs-5' : ''}">${date} ${isToday ? '(วันนี้)' : ''}</div>`;
+
+                    const dayItems = items.filter(item => item.date === dateStr);
+                    dayItems.forEach(item => {
+                        cell.appendChild(createCardElement(item));
+                    });
+
+                    date++;
+                }
+                row.appendChild(cell);
+            }
+            if (hasDateInRow) calendarBody.appendChild(row);
+        }
+    }
+
+    function createCardElement(item) {
+        const card = document.createElement('div');
+        
+        const itemDate = new Date(item.date);
+        const todayZero = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
+        const diffDays = Math.ceil((itemDate - todayZero) / (1000 * 60 * 60 * 24));
+
+        let statusClass = '';
+        if (item.status === 'completed') {
+            statusClass = 'completed';
+        } else if (item.status === 'cancelled') {
+            statusClass = 'cancelled';
+        } else if (diffDays >= 0 && diffDays <= 3) {
+            statusClass = 'urgent';
+        }
+
+        card.className = `delivery-card ${statusClass}`;
+        card.onclick = () => showDetail(item.id);
+
+        let statusBadge = '';
+        if (item.status === 'pending') {
+            statusBadge = `<span class="badge bg-warning text-dark" style="font-size:0.68rem;">ยังไม่จัด</span>`;
+        } else if (item.status === 'completed') {
+            statusBadge = `<span class="badge bg-success" style="font-size:0.68rem;">✓ จัดเสร็จแล้ว</span>`;
+        } else if (item.status === 'cancelled') {
+            statusBadge = `<span class="badge bg-secondary" style="font-size:0.68rem;">🚫 ยกเลิกแพลน</span>`;
+        }
+
+        card.innerHTML = `
+            <span class="clinic-title">🏥 ${item.customer}</span>
+            <div class="fw-bold text-secondary" style="font-size:0.75rem;">📍 ${item.branch}</div>
+            <div class="item-detail mt-1" style="font-size:0.78rem;">⚙️ <strong>เครื่อง:</strong> ${item.machine} ${item.machineSn ? `(${item.machineSn})` : ''}</div>
+            <div class="item-detail" style="font-size:0.78rem;">🔋 <strong>UPS:</strong> ${item.ups || '-'} ${item.upsSn ? `(${item.upsSn})` : ''}</div>
+            <div class="item-detail text-muted" style="font-size:0.75rem;">📝 <strong>หมายเหตุ:</strong> ${item.notes ? item.notes.substring(0, 18) + '...' : '-'}</div>
+            <div class="d-flex justify-content-between align-items-center mt-2">
+                <small class="text-muted" style="font-size:0.7rem;">Sale: ${item.sale || '-'}</small>
+                ${statusBadge}
+            </div>
+        `;
+        return card;
+    }
+
+    // ฟังก์ชันดึงและวิเคราะห์ข้อความอัตโนมัติ (Fast Paste)
+    window.autoParseAndPreview = function() {
+        const rawText = document.getElementById('rawTextPaste').value;
+        if (!rawText.trim()) return;
+
+        let customer = "", branch = "", machine = "", machineSn = "", ups = "", upsSn = "", notes = "", dateStr = "", sale = "";
+        const lines = rawText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+        if (lines.length > 0) {
+            const firstLine = lines[0];
+            if (firstLine.includes("ส่ง")) {
+                const parts = firstLine.split("ส่ง");
+                customer = parts[0].trim();
+                branch = parts[1].trim();
+            } else {
+                customer = firstLine;
+                let branchMatch = firstLine.match(/(Star.*|สาขา.*)/i);
+                if (branchMatch) branch = branchMatch[0].trim();
+            }
+        }
+
+        const dateMatch = rawText.match(/Plan.*?:?\s*(\d{1,2})\/(\d{1,2})\/(\d{2,4})/i);
+        if (dateMatch) {
+            let day = String(dateMatch[1]).padStart(2, '0');
+            let month = String(dateMatch[2]).padStart(2, '0');
+            let yearNum = parseInt(dateMatch[3]);
+            if (yearNum < 100) yearNum += 2500;
+            let yearAD = yearNum - 543;
+            dateStr = `${yearAD}-${month}-${day}`;
+        } else {
+            dateStr = new Date().toISOString().split('T')[0];
+        }
+
+        const saleMatch = rawText.match(/Sale\s*:\s*(.*?)(\n|$)/i);
+        if (saleMatch) sale = saleMatch[1].trim();
+
+        for (let line of lines) {
+            if (/^(Plan|Sale|ขอ\s*SN|-+)/i.test(line)) continue;
+
+            let cleanLine = line.replace(/^\d+[\.\)]\s*/, '').trim();
+            let tokens = cleanLine.split(/\s+/);
+            if (tokens.length === 0) continue;
+
+            let lastToken = tokens[tokens.length - 1];
+
+            if (/UPS/i.test(cleanLine) || /^LTC/i.test(lastToken)) {
+                if (/^[A-Z0-9]{5,}$/i.test(lastToken) && /\d/.test(lastToken) && /[A-Z]/i.test(lastToken)) {
+                    upsSn = lastToken;
+                    ups = tokens.slice(0, tokens.length - 1).join(" ");
+                } else {
+                    ups = cleanLine;
+                }
+            } 
+            else if (/ULTRAFORMER|UF3|VERSION|LIGHT/i.test(cleanLine) || /^[A-Z0-9]{5,}$/i.test(lastToken)) {
+                if (/^[A-Z0-9]{5,}$/i.test(lastToken) && /\d/.test(lastToken) && /[A-Z]/i.test(lastToken)) {
+                    machineSn = lastToken;
+                    machine = tokens.slice(0, tokens.length - 1).join(" ");
+                } else {
+                    machine = cleanLine;
+                }
+            }
+        }
+
+        document.getElementById('pvCustomer').value = customer || "";
+        document.getElementById('pvBranch').value = branch || "";
+        document.getElementById('pvDate').value = dateStr || "";
+        document.getElementById('pvSale').value = sale || "";
+        document.getElementById('pvMachine').value = machine || "";
+        document.getElementById('pvMachineSn').value = machineSn || "";
+        document.getElementById('pvUps').value = ups || "";
+        document.getElementById('pvUpsSn').value = upsSn || "";
+        document.getElementById('pvNotes').value = notes || "";
+    }
+
+    window.saveFastPaste = function() {
+        const customer = document.getElementById('pvCustomer').value;
+        const date = document.getElementById('pvDate').value;
+        const machine = document.getElementById('pvMachine').value;
+
+        if (!customer || !date || !machine) {
+            alert("⚠️ กรุณากรอก ชื่อคลินิก, วันที่ Plan และ เครื่องอะไร ให้ครบถ้วน");
+            return;
+        }
+
+        const newItem = {
+            customer: customer,
+            branch: document.getElementById('pvBranch').value || "-",
+            date: date,
+            sale: document.getElementById('pvSale').value || "-",
+            machine: machine,
+            machineSn: document.getElementById('pvMachineSn').value || "",
+            ups: document.getElementById('pvUps').value || "-",
+            upsSn: document.getElementById('pvUpsSn').value || "",
+            notes: document.getElementById('pvNotes').value || "-",
+            status: "pending"
+        };
+
+        push(dbRef, newItem);
+
+        document.getElementById('rawTextPaste').value = "";
+        document.getElementById('pvCustomer').value = "";
+        document.getElementById('pvBranch').value = "";
+        document.getElementById('pvMachine').value = "";
+        document.getElementById('pvMachineSn').value = "";
+        document.getElementById('pvUps').value = "";
+        document.getElementById('pvUpsSn').value = "";
+        document.getElementById('pvNotes').value = "";
+
+        const modal = bootstrap.Modal.getInstance(document.getElementById('quickPasteModal'));
+        modal.hide();
+    }
+
+    window.openYearPickerModal = function() {
+        startDecadeYear = Math.floor(viewDate.getFullYear() / 10) * 10;
+        showYearGrid();
+        const modal = new bootstrap.Modal(document.getElementById('yearPickerModal'));
+        modal.show();
+    }
+
+    function showYearGrid() {
+        document.getElementById('pickerTitle').innerText = `${startDecadeYear} - ${startDecadeYear + 9}`;
+        const grid = document.getElementById('pickerGrid');
+        grid.innerHTML = '';
+
+        for (let y = startDecadeYear - 2; y <= startDecadeYear + 11; y++) {
+            const item = document.createElement('div');
+            const isOutRange = (y < startDecadeYear || y > startDecadeYear + 9);
+            const isActive = (y === viewDate.getFullYear());
+
+            item.className = `picker-item ${isOutRange ? 'out-range' : ''} ${isActive ? 'active' : ''}`;
+            item.innerText = y;
+            item.onclick = () => selectYear(y);
+            grid.appendChild(item);
+        }
+    }
+
+    function selectYear(selectedYear) {
+        selectedTempYear = selectedYear;
+        showMonthGrid();
+    }
+
+    function showMonthGrid() {
+        document.getElementById('pickerTitle').innerText = `เลือกเดือน (ปี ค.ศ. ${selectedTempYear})`;
+        const grid = document.getElementById('pickerGrid');
+        grid.innerHTML = '';
+
+        shortThaiMonths.forEach((m, index) => {
+            const item = document.createElement('div');
+            const isActive = (selectedTempYear === viewDate.getFullYear() && index === viewDate.getMonth());
+
+            item.className = `picker-item ${isActive ? 'active' : ''}`;
+            item.innerText = m;
+            item.onclick = () => selectMonth(index);
+            grid.appendChild(item);
+        });
+    }
+
+    function selectMonth(selectedMonth) {
+        viewDate.setFullYear(selectedTempYear);
+        viewDate.setMonth(selectedMonth);
+        renderCalendar();
+
+        const modalEl = document.getElementById('yearPickerModal');
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+    }
+
+    window.shiftDecade = function(offset) {
+        startDecadeYear += offset;
+        showYearGrid();
+    }
+
+    window.showDetail = function(id) {
+        const item = items.find(i => i.id === id);
+        if (!item) return;
+
+        document.getElementById('detailTitle').innerText = `${item.customer} (${item.branch})`;
+        document.getElementById('detailBody').innerHTML = `
+            <div class="mb-3">
+                <label class="fw-bold mb-1">ปรับเปลี่ยนสถานะแพลนนี้:</label>
+                <div class="btn-group w-100" role="group">
+                    <button onclick="updateStatus('${item.id}', 'pending')" class="btn ${item.status === 'pending' ? 'btn-warning' : 'btn-outline-warning'} fw-bold">ยังไม่จัด</button>
+                    <button onclick="updateStatus('${item.id}', 'completed')" class="btn ${item.status === 'completed' ? 'btn-success' : 'btn-outline-success'} fw-bold">✓ จัดเสร็จแล้ว</button>
+                    <button onclick="updateStatus('${item.id}', 'cancelled')" class="btn ${item.status === 'cancelled' ? 'btn-secondary' : 'btn-outline-secondary'} fw-bold">🚫 ยกเลิกแพลน</button>
+                </div>
+            </div>
+            <hr>
+            <p>📅 <strong>กำหนดส่ง (Plan):</strong> ${item.date}</p>
+            <p>👤 <strong>ผู้ขาย (Sale):</strong> ${item.sale || '-'}</p>
+            <hr>
+            <p>⚙️ <strong>3. เครื่องอะไร:</strong> ${item.machine} ${item.machineSn ? `<span class="badge bg-primary ms-1">SN: ${item.machineSn}</span>` : ''}</p>
+            <p>🔋 <strong>4. UPS อะไร:</strong> ${item.ups || '-'} ${item.upsSn ? `<span class="badge bg-info text-dark ms-1">SN: ${item.upsSn}</span>` : ''}</p>
+            <p>📝 <strong>5. หมายเหตุเพิ่มเติม:</strong></p>
+            <div class="bg-light p-3 rounded" style="font-size: 0.9rem;">${item.notes || '-'}</div>
+        `;
+
+        document.getElementById('btnDeletePlan').onclick = () => deletePlan(item.id);
+
+        const modal = new bootstrap.Modal(document.getElementById('detailModal'));
+        modal.show();
+    }
+
+    window.updateStatus = function(id, newStatus) {
+        const itemRef = ref(db, `delivery_items/${id}`);
+        update(itemRef, { status: newStatus });
+        
+        const modalEl = document.getElementById('detailModal');
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        if(modal) modal.hide();
+    }
+
+    window.deletePlan = function(id) {
+        if (confirm("คุณแน่ใจหรือไม่ว่าต้องการลบรายการนี้? (ระบบจะลบข้อมูลออกของทุกคนทันที)")) {
+            const itemRef = ref(db, `delivery_items/${id}`);
+            remove(itemRef);
+            
+            const modalEl = document.getElementById('detailModal');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            if(modal) modal.hide();
+        }
+    }
+
+    window.changeMonth = function(offset) {
+        viewDate.setMonth(viewDate.getMonth() + offset);
+        renderCalendar();
+    }
+
+    window.goToToday = function() {
+        viewDate = new Date();
+        renderCalendar();
+    }
+
+    document.getElementById('addDeliveryForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const newItem = {
+            customer: document.getElementById('customer').value,
+            branch: document.getElementById('branch').value,
+            date: document.getElementById('deliveryDate').value,
+            sale: document.getElementById('sale').value,
+            machine: document.getElementById('machine').value,
+            machineSn: document.getElementById('machineSn').value,
+            ups: document.getElementById('ups').value,
+            upsSn: document.getElementById('upsSn').value,
+            notes: document.getElementById('notes').value,
+            status: "pending"
+        };
+        
+        push(dbRef, newItem);
+
+        const modal = bootstrap.Modal.getInstance(document.getElementById('addModal'));
+        modal.hide();
+        this.reset();
+    });
+
+    window.exportToExcel = function() {
+        const excelData = items.map(i => {
+            let statusText = "ยังไม่จัด";
+            if (i.status === 'completed') statusText = "จัดเสร็จแล้ว";
+            if (i.status === 'cancelled') statusText = "ยกเลิกแพลนแล้ว";
+
+            return {
+                'ชื่อคลินิก/ลูกค้า': i.customer,
+                'สาขา/สถานที่ส่ง': i.branch,
+                'กำหนดส่ง (Plan)': i.date,
+                'Sale': i.sale,
+                'เครื่องอะไร': i.machine,
+                'SN เครื่อง': i.machineSn,
+                'UPS อะไร': i.ups,
+                'SN UPS': i.upsSn,
+                'หมายเหตุเพิ่มเติม': i.notes,
+                'สถานะการจัด': statusText
+            };
+        });
+
+        const worksheet = XLSX.utils.json_to_sheet(excelData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "แผนจัดส่งสินค้า");
+        XLSX.writeFile(workbook, "รายงานการส่งสินค้า.xlsx");
+    }
+
+    window.onload = renderCalendar;
+</script>
+</body>
+</html>
