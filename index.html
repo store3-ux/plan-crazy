@@ -106,7 +106,7 @@
         <span class="badge bg-secondary p-1">🚫 ยกเลิก</span>
     </div>
 
-    <!-- ตารางปฏิทิน (เพิ่มการ Scroll ซ้ายขวาบนมือถือหากจอเล็กมาก) -->
+    <!-- ตารางปฏิทิน -->
     <div class="table-responsive">
         <table class="table calendar-table">
             <thead>
@@ -337,6 +337,17 @@
     let selectedTempYear = null;
 
     let items = [];
+
+    // ฟังก์ชันแปลงวันที่เป็น วัน เดือน ปี
+    window.formatDateThai = function(dateStr) {
+        if (!dateStr) return "-";
+        const parts = dateStr.split('-');
+        if (parts.length !== 3) return dateStr;
+        const year = parseInt(parts[0]) + 543;
+        const month = shortThaiMonths[parseInt(parts[1]) - 1];
+        const day = parseInt(parts[2]);
+        return `${day} ${month} ${year}`;
+    }
 
     onValue(dbRef, (snapshot) => {
         const data = snapshot.val();
@@ -622,7 +633,7 @@
                 </div>
             </div>
             <hr>
-            <p class="mb-1">📅 <strong>กำหนดส่ง:</strong> ${item.date}</p>
+            <p class="mb-1">📅 <strong>กำหนดส่ง:</strong> ${window.formatDateThai(item.date)}</p>
             <p class="mb-1">👤 <strong>ผู้ขาย (Sale):</strong> ${item.sale || '-'}</p>
             <hr>
             <p class="mb-1">⚙️ <strong>เครื่อง:</strong> ${item.machine} ${item.machineSn ? `<span class="badge bg-primary">SN: ${item.machineSn}</span>` : ''}</p>
@@ -698,7 +709,7 @@
             return {
                 'ชื่อคลินิก/ลูกค้า': i.customer,
                 'สาขา/สถานที่ส่ง': i.branch,
-                'กำหนดส่ง (Plan)': i.date,
+                'กำหนดส่ง (Plan)': window.formatDateThai(i.date),
                 'Sale': i.sale,
                 'เครื่องอะไร': i.machine,
                 'SN เครื่อง': i.machineSn,
