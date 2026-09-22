@@ -101,8 +101,8 @@
     <!-- คำอธิบายสถานะ -->
     <div class="mb-2 d-flex gap-1 flex-wrap justify-content-center" style="font-size: 0.75rem;">
         <span class="badge bg-warning text-dark p-1">⚠️ ใกล้ส่ง (3วัน)</span>
-        <span class="badge bg-white text-dark border p-1">⚪ รอส่ง</span>
-        <span class="badge bg-success p-1">🟢 เสร็จแล้ว</span>
+        <span class="badge bg-white text-dark border p-1">⚪ ยังไม่เตรียม</span>
+        <span class="badge bg-success p-1">🟢 เตรียมเสร็จแล้ว</span>
         <span class="badge bg-secondary p-1">🚫 ยกเลิก</span>
     </div>
 
@@ -298,9 +298,71 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-3" id="detailBody"></div>
-            <div class="modal-footer bg-light d-flex justify-content-between p-2">
-                <button type="button" id="btnDeletePlan" class="btn btn-outline-danger btn-sm">🗑️ ลบทิ้ง</button>
-                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">ปิด</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal 4: แก้ไขรายการ -->
+<div class="modal fade" id="editModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-warning text-dark p-3">
+                <h5 class="modal-title fw-bold">✏️ แก้ไขรายการ</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-3">
+                <form id="editDeliveryForm">
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-6">
+                            <label class="form-label-custom">ชื่อบริษัท / คลินิก / ลูกค้า</label>
+                            <input type="text" class="form-control large-input" id="editCustomer" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label-custom">สาขา / สถานที่จัดส่ง</label>
+                            <input type="text" class="form-control large-input" id="editBranch" required>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-6">
+                            <label class="form-label-custom">วันที่กำหนดส่ง (Plan)</label>
+                            <input type="date" class="form-control large-input" id="editDeliveryDate" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label-custom">ผู้ขาย (Sale)</label>
+                            <input type="text" class="form-control large-input" id="editSale">
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-7">
+                            <label class="form-label-custom">เครื่องอะไร</label>
+                            <input type="text" class="form-control large-input" id="editMachine" required>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label-custom">SN เครื่อง</label>
+                            <input type="text" class="form-control large-input" id="editMachineSn">
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-2">
+                        <div class="col-md-7">
+                            <label class="form-label-custom">UPS อะไร</label>
+                            <input type="text" class="form-control large-input" id="editUps">
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label-custom">SN UPS</label>
+                            <input type="text" class="form-control large-input" id="editUpsSn">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label-custom">หมายเหตุเพิ่มเติม</label>
+                        <textarea class="form-control large-textarea" id="editNotes" rows="2"></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-warning btn-lg w-100 fw-bold">💾 บันทึกการแก้ไข</button>
+                </form>
             </div>
         </div>
     </div>
@@ -335,6 +397,7 @@
     let viewDate = new Date();   
     let startDecadeYear = 2020;
     let selectedTempYear = null;
+    let currentEditId = null;
 
     let items = [];
 
@@ -428,9 +491,9 @@
 
         let statusBadge = '';
         if (item.status === 'pending') {
-            statusBadge = `<span class="badge bg-warning text-dark" style="font-size:0.6rem;">รอส่ง</span>`;
+            statusBadge = `<span class="badge bg-warning text-dark" style="font-size:0.6rem;">ยังไม่เตรียม</span>`;
         } else if (item.status === 'completed') {
-            statusBadge = `<span class="badge bg-success" style="font-size:0.6rem;">✓ เสร็จ</span>`;
+            statusBadge = `<span class="badge bg-success" style="font-size:0.6rem;">✓ เตรียมเสร็จ</span>`;
         } else if (item.status === 'cancelled') {
             statusBadge = `<span class="badge bg-secondary" style="font-size:0.6rem;">🚫 ยกเลิก</span>`;
         }
@@ -627,8 +690,8 @@
             <div class="mb-3">
                 <label class="fw-bold mb-1">ปรับสถานะรายการ:</label>
                 <div class="btn-group w-100" role="group">
-                    <button onclick="updateStatus('${item.id}', 'pending')" class="btn ${item.status === 'pending' ? 'btn-warning' : 'btn-outline-warning'} btn-sm fw-bold">รอส่ง</button>
-                    <button onclick="updateStatus('${item.id}', 'completed')" class="btn ${item.status === 'completed' ? 'btn-success' : 'btn-outline-success'} btn-sm fw-bold">✓ เสร็จแล้ว</button>
+                    <button onclick="updateStatus('${item.id}', 'pending')" class="btn ${item.status === 'pending' ? 'btn-warning' : 'btn-outline-warning'} btn-sm fw-bold">ยังไม่เตรียม</button>
+                    <button onclick="updateStatus('${item.id}', 'completed')" class="btn ${item.status === 'completed' ? 'btn-success' : 'btn-outline-success'} btn-sm fw-bold">✓ เตรียมเสร็จแล้ว</button>
                     <button onclick="updateStatus('${item.id}', 'cancelled')" class="btn ${item.status === 'cancelled' ? 'btn-secondary' : 'btn-outline-secondary'} btn-sm fw-bold">🚫 ยกเลิก</button>
                 </div>
             </div>
@@ -640,13 +703,73 @@
             <p class="mb-1">🔋 <strong>UPS:</strong> ${item.ups || '-'} ${item.upsSn ? `<span class="badge bg-info text-dark">SN: ${item.upsSn}</span>` : ''}</p>
             <p class="mb-1">📝 <strong>หมายเหตุ:</strong></p>
             <div class="bg-light p-2 rounded" style="font-size: 0.85rem;">${item.notes || '-'}</div>
+            
+            <div class="modal-footer bg-light d-flex justify-content-between p-2 mt-3 mx-n3 mb-n3 border-top">
+                <button type="button" onclick="deletePlan('${item.id}')" class="btn btn-outline-danger btn-sm">🗑️ ลบทิ้ง</button>
+                <div>
+                    <button type="button" onclick="openEditModal('${item.id}')" class="btn btn-warning btn-sm fw-bold me-1 text-dark">✏️ แก้ไข</button>
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">ปิด</button>
+                </div>
+            </div>
         `;
-
-        document.getElementById('btnDeletePlan').onclick = () => deletePlan(item.id);
 
         const modal = new bootstrap.Modal(document.getElementById('detailModal'));
         modal.show();
     }
+
+    // ฟังก์ชันสำหรับดึงข้อมูลเดิมไปใส่ใน Modal แก้ไข
+    window.openEditModal = function(id) {
+        const item = items.find(i => i.id === id);
+        if (!item) return;
+        
+        currentEditId = id;
+        
+        // เติมข้อมูลเดิมลงในช่อง
+        document.getElementById('editCustomer').value = item.customer || "";
+        document.getElementById('editBranch').value = item.branch || "";
+        document.getElementById('editDeliveryDate').value = item.date || "";
+        document.getElementById('editSale').value = item.sale || "";
+        document.getElementById('editMachine').value = item.machine || "";
+        document.getElementById('editMachineSn').value = item.machineSn || "";
+        document.getElementById('editUps').value = item.ups || "";
+        document.getElementById('editUpsSn').value = item.upsSn || "";
+        document.getElementById('editNotes').value = item.notes || "";
+
+        // ปิดหน้าต่าง Detail และเปิดหน้าต่าง Edit
+        const detailModalEl = document.getElementById('detailModal');
+        const detailModal = bootstrap.Modal.getInstance(detailModalEl);
+        if(detailModal) detailModal.hide();
+
+        const editModal = new bootstrap.Modal(document.getElementById('editModal'));
+        editModal.show();
+    }
+
+    // บันทึกการแก้ไขเมื่อกด Submit ในหน้าแก้ไข
+    document.getElementById('editDeliveryForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        if (!currentEditId) return;
+
+        const updatedItem = {
+            customer: document.getElementById('editCustomer').value,
+            branch: document.getElementById('editBranch').value,
+            date: document.getElementById('editDeliveryDate').value,
+            sale: document.getElementById('editSale').value,
+            machine: document.getElementById('editMachine').value,
+            machineSn: document.getElementById('editMachineSn').value,
+            ups: document.getElementById('editUps').value,
+            upsSn: document.getElementById('editUpsSn').value,
+            notes: document.getElementById('editNotes').value
+        };
+        
+        const itemRef = ref(db, `delivery_items/${currentEditId}`);
+        update(itemRef, updatedItem).then(() => {
+            alert("✅ บันทึกการแก้ไขข้อมูลเรียบร้อยแล้ว!");
+            const modal = bootstrap.Modal.getInstance(document.getElementById('editModal'));
+            modal.hide();
+        }).catch((error) => {
+            alert("❌ เกิดข้อผิดพลาด: " + error);
+        });
+    });
 
     window.updateStatus = function(id, newStatus) {
         const itemRef = ref(db, `delivery_items/${id}`);
@@ -702,8 +825,8 @@
 
     window.exportToExcel = function() {
         const excelData = items.map(i => {
-            let statusText = "ยังไม่จัด";
-            if (i.status === 'completed') statusText = "จัดเสร็จแล้ว";
+            let statusText = "ยังไม่เตรียม";
+            if (i.status === 'completed') statusText = "เตรียมเสร็จแล้ว";
             if (i.status === 'cancelled') statusText = "ยกเลิกแพลนแล้ว";
 
             return {
