@@ -379,6 +379,41 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getDatabase, ref, push, set, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
+    // 1. ขออนุญาตแจ้งเตือนบน Google Chrome / Windows Desktop
+    function requestNotificationPermission() {
+        if ("Notification" in window) {
+            if (Notification.permission !== "granted" && Notification.permission !== "denied") {
+                Notification.requestPermission();
+            }
+        }
+    }
+    requestNotificationPermission();
+
+    // 2. ฟังก์ชันส่งแจ้งเตือนออกไปยังระบบ Google Chrome
+    function sendChromeNotification(title, body) {
+        if ("Notification" in window && Notification.permission === "granted") {
+            new Notification(title, {
+                body: body,
+                icon: "https://cdn-icons-png.flaticon.com/512/1160/1160358.png"
+            });
+        }
+    }
+
+    // 3. ฟังก์ชันแจ้งเตือน Toast มุมขวาบนของหน้าเว็บ
+    window.showToast = function(title, text, icon = 'info') {
+        Swal.fire({
+            title: title,
+            text: text,
+            icon: icon,
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 4000,
+            timerProgressBar: true
+        });
+    };
+
+    // 4. ตั้งค่า Firebase Configuration
     const firebaseConfig = {
         apiKey: "AIzaSyDXXuAMiGqetHXy-O9exynALV_DssRnB44",
         authDomain: "plan-crazy.firebaseapp.com",
@@ -407,21 +442,7 @@
     let isFirstLoad = true;
     let previousDataMap = {};
 
-    // ฟังก์ชันแสดงป๊อปอัปแจ้งเตือนบนหน้าเว็บด้วย SweetAlert2
-    window.showToast = function(title, text, icon = 'info') {
-        Swal.fire({
-            title: title,
-            text: text,
-            icon: icon,
-            toast: true,
-            position: 'top-end',
-            showConfirmButton: false,
-            timer: 4000,
-            timerProgressBar: true
-        });
-    };
-
-    // ฟังก์ชันแปลงวันที่เป็น DD/MM/YYYY
+    // แปลงวันที่เป็น DD/MM/YYYY
     window.formatDateThai = function(dateStr) {
         if (!dateStr) return "-";
         const parts = dateStr.split('-');
@@ -432,7 +453,7 @@
         return `${day}/${month}/${year}`;
     };
 
-    // แปลงรหัสสถานะเป็นข้อความภาษาไทย
+    // แปลงรหัสสถานะเป็นข้อความ
     function getStatusLabel(status) {
         if (status === 'completed') return '🟢 เตรียมสินค้าเสร็จแล้ว';
         if (status === 'shipped') return '🚚 ขนส่งมารับเครื่องไปแล้ว';
@@ -440,7 +461,7 @@
         return '⚪ ยังไม่เตรียม';
     }
 
-    // ดึงข้อมูล Firebase แบบ Realtime และแจ้งเตือนเมื่อมีการอัปเดต
+    // 5. ดึงข้อมูล Realtime และแจ้งเตือนทั้งบนหน้าเว็บ + Google Chrome
     onValue(dbRef, (snapshot) => {
         const data = snapshot.val() || {};
         items = [];
@@ -449,19 +470,26 @@
             items.push({ id: key, ...data[key] });
         });
 
-        // ตรวจสอบแจ้งเตือนเฉพาะเมื่อมีการเปลี่ยนข้อมูลจากผู้อื่น/รายการใหม่เกิดขึ้นจริง
         if (!isFirstLoad) {
             Object.keys(data).forEach(key => {
                 const newItem = data[key];
                 const oldItem = previousDataMap[key];
 
                 if (!oldItem) {
-                    // มีรายการถูกเพิ่มเข้ามาใหม่
-                    showToast('📢 มีรายการจัดส่งใหม่!', `${newItem.customer} (${newItem.branch}) - เครื่อง: ${newItem.machine}`, 'success');
+                    // แจ้งเตือนรายการใหม่
+                    const title = '📢 มีรายการจัดส่งใหม่!';
+                    const msg = `${newItem.customer || ''} (${newItem.branch || ''}) - เครื่อง: ${newItem.machine || ''}`;
+                    
+                    showToast(title, msg, 'success');
+                    sendChromeNotification(title, msg);
                 } else if (oldItem.status !== newItem.status) {
-                    // มีการเปลี่ยนสถานะ
+                    // แจ้งเตือนเปลี่ยนสถานะ
                     const statusText = getStatusLabel(newItem.status);
-                    showToast('🔔 อัปเดตสถานะงาน!', `${newItem.customer}: ${statusText}`, 'info');
+                    const title = '🔔 อัปเดตสถานะงาน!';
+                    const msg = `${newItem.customer || ''}: ${statusText}`;
+
+                    showToast(title, msg, 'info');
+                    sendChromeNotification(title, msg);
                 }
             });
         } else {
