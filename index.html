@@ -32,13 +32,13 @@
 
         .clinic-title { font-weight: bold; color: #1a252f; display: block; font-size: 0.82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-        /* ปรับช่อง Input ให้เหมาะกับนิ้วสัมผัส */
+        /* ปรับช่อง Input */
         .large-input { height: 48px !important; font-size: 1rem !important; border: 1.5px solid #cbd5e1 !important; border-radius: 8px !important; padding: 10px 12px !important; background-color: #ffffff; }
         .large-input:focus { border-color: #0d6efd !important; box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15) !important; }
         .large-textarea { font-size: 0.95rem !important; border: 1.5px solid #cbd5e1 !important; border-radius: 8px !important; background-color: #ffffff; }
         .form-label-custom { font-weight: 700; color: #334155; font-size: 0.88rem; margin-bottom: 4px; }
 
-        /* Fast Paste Modal Mobile Responsive */
+        /* Fast Paste Modal Responsive */
         .paste-container { display: flex; flex-direction: column; gap: 15px; }
         .paste-textarea { border: 2px solid #ffc107 !important; border-radius: 8px; font-size: 0.95rem; }
         .preview-box { background-color: #f8fafc; border-radius: 10px; padding: 12px; border: 1px dashed #cbd5e1; }
@@ -442,7 +442,6 @@
     let isFirstLoad = true;
     let previousDataMap = {};
 
-    // แปลงวันที่เป็น DD/MM/YYYY
     window.formatDateThai = function(dateStr) {
         if (!dateStr) return "-";
         const parts = dateStr.split('-');
@@ -453,7 +452,6 @@
         return `${day}/${month}/${year}`;
     };
 
-    // แปลงรหัสสถานะเป็นข้อความ
     function getStatusLabel(status) {
         if (status === 'completed') return '🟢 เตรียมสินค้าเสร็จแล้ว';
         if (status === 'shipped') return '🚚 ขนส่งมารับเครื่องไปแล้ว';
@@ -461,7 +459,7 @@
         return '⚪ ยังไม่เตรียม';
     }
 
-    // 5. ดึงข้อมูล Realtime และแจ้งเตือนทั้งบนหน้าเว็บ + Google Chrome
+    // 5. ดึงข้อมูล Realtime และแจ้งเตือน "ทุกการเปลี่ยนแปลง" (เพิ่ม/ลบ/แก้ไข/เปลี่ยนสถานะ)
     onValue(dbRef, (snapshot) => {
         const data = snapshot.val() || {};
         items = [];
@@ -471,24 +469,47 @@
         });
 
         if (!isFirstLoad) {
+            // A. ตรวจจับการ "เพิ่มรายการใหม่" และ "แก้ไขรายการ"
             Object.keys(data).forEach(key => {
                 const newItem = data[key];
                 const oldItem = previousDataMap[key];
 
                 if (!oldItem) {
-                    // แจ้งเตือนรายการใหม่
+                    // 1. เพิ่มรายการใหม่
                     const title = '📢 มีรายการจัดส่งใหม่!';
                     const msg = `${newItem.customer || ''} (${newItem.branch || ''}) - เครื่อง: ${newItem.machine || ''}`;
                     
                     showToast(title, msg, 'success');
                     sendChromeNotification(title, msg);
-                } else if (oldItem.status !== newItem.status) {
-                    // แจ้งเตือนเปลี่ยนสถานะ
-                    const statusText = getStatusLabel(newItem.status);
-                    const title = '🔔 อัปเดตสถานะงาน!';
-                    const msg = `${newItem.customer || ''}: ${statusText}`;
+                } else if (JSON.stringify(oldItem) !== JSON.stringify(newItem)) {
+                    // มีการเปลี่ยนแปลงข้อมูล
+                    if (oldItem.status !== newItem.status) {
+                        // 2. เปลี่ยนสถานะ
+                        const statusText = getStatusLabel(newItem.status);
+                        const title = '🔔 อัปเดตสถานะงาน!';
+                        const msg = `${newItem.customer || ''}: ${statusText}`;
 
-                    showToast(title, msg, 'info');
+                        showToast(title, msg, 'info');
+                        sendChromeNotification(title, msg);
+                    } else {
+                        // 3. แก้ไขข้อมูล/รายละเอียด
+                        const title = '✏️ แก้ไขข้อมูลรายการ!';
+                        const msg = `${newItem.customer || ''} (${newItem.branch || ''}) ถูกแก้ไขแล้ว`;
+
+                        showToast(title, msg, 'warning');
+                        sendChromeNotification(title, msg);
+                    }
+                }
+            });
+
+            // B. ตรวจจับการ "ลบรายการ"
+            Object.keys(previousDataMap).forEach(key => {
+                if (!data[key]) {
+                    const deletedItem = previousDataMap[key];
+                    const title = '🗑️ ลบรายการจัดส่ง!';
+                    const msg = `รายการของ ${deletedItem.customer || ''} (${deletedItem.branch || ''}) ถูกลบออกจากระบบแล้ว`;
+
+                    showToast(title, msg, 'error');
                     sendChromeNotification(title, msg);
                 }
             });
@@ -582,7 +603,7 @@
         card.innerHTML = `
             <span class="clinic-title">🏥 ${item.customer}</span>
             <div class="fw-bold text-secondary item-detail-hide-mobile" style="font-size:0.72rem;">📍 ${item.branch}</div>
-            <div class="item-detail mt-1" style="font-size:0.72rem;">⚙️ ${item.machine}</div>
+            <div class="item-detail mt-1" style="font-size:0.72rem;">⚙️️ ${item.machine}</div>
             <div class="d-flex justify-content-between align-items-center mt-1">
                 <small class="text-muted item-detail-hide-mobile" style="font-size:0.65rem;">Sale: ${item.sale || '-'}</small>
                 ${statusBadge}
@@ -831,6 +852,8 @@
         e.preventDefault();
         if (!currentEditId) return;
 
+        const currentItem = items.find(i => i.id === currentEditId);
+
         const updatedItem = {
             customer: document.getElementById('editCustomer').value,
             branch: document.getElementById('editBranch').value,
@@ -840,12 +863,12 @@
             machineSn: document.getElementById('editMachineSn').value,
             ups: document.getElementById('editUps').value,
             upsSn: document.getElementById('editUpsSn').value,
-            notes: document.getElementById('editNotes').value
+            notes: document.getElementById('editNotes').value,
+            status: currentItem ? currentItem.status : 'pending'
         };
         
         const itemRef = ref(db, `delivery_items/${currentEditId}`);
         update(itemRef, updatedItem).then(() => {
-            Swal.fire('สำเร็จ', 'บันทึกการแก้ไขข้อมูลเรียบร้อยแล้ว', 'success');
             const modal = bootstrap.Modal.getInstance(document.getElementById('editModal'));
             modal.hide();
         }).catch((error) => {
@@ -880,8 +903,6 @@
                 const modalEl = document.getElementById('detailModal');
                 const modal = bootstrap.Modal.getInstance(modalEl);
                 if(modal) modal.hide();
-
-                Swal.fire('ลบสำเร็จ!', 'รายการถูกลบเรียบร้อยแล้ว', 'success');
             }
         });
     }
