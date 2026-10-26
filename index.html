@@ -26,24 +26,21 @@
         /* สถานะการ์ด */
         .delivery-card.urgent { background-color: #fff8e6; border-left-color: #dc3545; }
         .delivery-card.completed { background-color: #e8f5e9; border-left-color: #198754; }
-        .delivery-card.shipped { background-color: #e0f7fa; border-left-color: #0dcaf0; } /* ขนส่งรับไปแล้ว */
+        .delivery-card.shipped { background-color: #e0f7fa; border-left-color: #0dcaf0; }
         .delivery-card.cancelled { background-color: #f1f5f9; border-left-color: #64748b; opacity: 0.65; }
         .delivery-card.cancelled .clinic-title, .delivery-card.cancelled .item-detail { text-decoration: line-through; color: #64748b !important; }
 
         .clinic-title { font-weight: bold; color: #1a252f; display: block; font-size: 0.82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-        /* ปรับช่อง Input */
         .large-input { height: 48px !important; font-size: 1rem !important; border: 1.5px solid #cbd5e1 !important; border-radius: 8px !important; padding: 10px 12px !important; background-color: #ffffff; }
         .large-input:focus { border-color: #0d6efd !important; box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15) !important; }
         .large-textarea { font-size: 0.95rem !important; border: 1.5px solid #cbd5e1 !important; border-radius: 8px !important; background-color: #ffffff; }
         .form-label-custom { font-weight: 700; color: #334155; font-size: 0.88rem; margin-bottom: 4px; }
 
-        /* Fast Paste Modal Responsive */
         .paste-container { display: flex; flex-direction: column; gap: 15px; }
         .paste-textarea { border: 2px solid #ffc107 !important; border-radius: 8px; font-size: 0.95rem; }
         .preview-box { background-color: #f8fafc; border-radius: 10px; padding: 12px; border: 1px dashed #cbd5e1; }
 
-        /* Picker Modal */
         .picker-modal .modal-content { background-color: #262626; color: #ffffff; border-radius: 12px; }
         .picker-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 10px; text-align: center; }
         .picker-item { display: flex; align-items: center; justify-content: center; height: 55px; width: 55px; margin: 0 auto; border-radius: 50%; font-size: 0.95rem; cursor: pointer; color: #d1d5db; }
@@ -51,7 +48,32 @@
 
         .sync-badge { font-size: 0.75rem; padding: 4px 8px; border-radius: 12px; }
 
-        /* Mobile Adjustments */
+        /* รูปแบบใบติดเครื่องสำหรับการพิมพ์ (Ticket Print Style) */
+        .ticket-print-box {
+            border: 2px dashed #334155;
+            border-radius: 10px;
+            padding: 16px;
+            background-color: #ffffff;
+            color: #000000;
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+        }
+
+        @media screen {
+            #printableTicketArea { display: none; }
+        }
+
+        @media print {
+            body * { visibility: hidden; }
+            #printableTicketArea, #printableTicketArea * { visibility: visible; }
+            #printableTicketArea {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                display: block !important;
+            }
+        }
+
         @media (max-width: 768px) {
             .container-fluid { padding-left: 10px !important; padding-right: 10px !important; }
             .header-box { flex-direction: column; gap: 10px; align-items: stretch !important; text-align: center; }
@@ -372,6 +394,26 @@
     </div>
 </div>
 
+<!-- Modal 5: พรีวิวใบติดเครื่องก่อนพิมพ์ -->
+<div class="modal fade" id="ticketModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white p-3">
+                <h5 class="modal-title fw-bold">🏷️ พรีวิวใบติดประจำเครื่อง</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-3" id="ticketPreviewBody"></div>
+            <div class="modal-footer bg-light p-2">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">ปิด</button>
+                <button type="button" onclick="window.print()" class="btn btn-success fw-bold">🖨️ สั่งพิมพ์ (Print)</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- พื้นที่สำหรับสั่งพิมพ์ใบติดเครื่อง -->
+<div id="printableTicketArea"></div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <!-- Firebase SDK Module -->
@@ -379,7 +421,6 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getDatabase, ref, push, set, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-    // 1. ขออนุญาตแจ้งเตือนบน Google Chrome / Windows Desktop
     function requestNotificationPermission() {
         if ("Notification" in window) {
             if (Notification.permission !== "granted" && Notification.permission !== "denied") {
@@ -389,7 +430,6 @@
     }
     requestNotificationPermission();
 
-    // 2. ฟังก์ชันส่งแจ้งเตือนออกไปยังระบบ Google Chrome
     function sendChromeNotification(title, body) {
         if ("Notification" in window && Notification.permission === "granted") {
             new Notification(title, {
@@ -399,7 +439,6 @@
         }
     }
 
-    // 3. ฟังก์ชันแจ้งเตือน Toast มุมขวาบนของหน้าเว็บ
     window.showToast = function(title, text, icon = 'info') {
         Swal.fire({
             title: title,
@@ -413,7 +452,6 @@
         });
     };
 
-    // 4. ตั้งค่า Firebase Configuration
     const firebaseConfig = {
         apiKey: "AIzaSyDXXuAMiGqetHXy-O9exynALV_DssRnB44",
         authDomain: "plan-crazy.firebaseapp.com",
@@ -459,7 +497,6 @@
         return '⚪ ยังไม่เตรียม';
     }
 
-    // 5. ดึงข้อมูล Realtime และแจ้งเตือน "ทุกการเปลี่ยนแปลง" (เพิ่ม/ลบ/แก้ไข/เปลี่ยนสถานะ)
     onValue(dbRef, (snapshot) => {
         const data = snapshot.val() || {};
         items = [];
@@ -469,46 +506,36 @@
         });
 
         if (!isFirstLoad) {
-            // A. ตรวจจับการ "เพิ่มรายการใหม่" และ "แก้ไขรายการ"
             Object.keys(data).forEach(key => {
                 const newItem = data[key];
                 const oldItem = previousDataMap[key];
 
                 if (!oldItem) {
-                    // 1. เพิ่มรายการใหม่
                     const title = '📢 มีรายการจัดส่งใหม่!';
                     const msg = `${newItem.customer || ''} (${newItem.branch || ''}) - เครื่อง: ${newItem.machine || ''}`;
-                    
                     showToast(title, msg, 'success');
                     sendChromeNotification(title, msg);
                 } else if (JSON.stringify(oldItem) !== JSON.stringify(newItem)) {
-                    // มีการเปลี่ยนแปลงข้อมูล
                     if (oldItem.status !== newItem.status) {
-                        // 2. เปลี่ยนสถานะ
                         const statusText = getStatusLabel(newItem.status);
                         const title = '🔔 อัปเดตสถานะงาน!';
                         const msg = `${newItem.customer || ''}: ${statusText}`;
-
                         showToast(title, msg, 'info');
                         sendChromeNotification(title, msg);
                     } else {
-                        // 3. แก้ไขข้อมูล/รายละเอียด
                         const title = '✏️ แก้ไขข้อมูลรายการ!';
                         const msg = `${newItem.customer || ''} (${newItem.branch || ''}) ถูกแก้ไขแล้ว`;
-
                         showToast(title, msg, 'warning');
                         sendChromeNotification(title, msg);
                     }
                 }
             });
 
-            // B. ตรวจจับการ "ลบรายการ"
             Object.keys(previousDataMap).forEach(key => {
                 if (!data[key]) {
                     const deletedItem = previousDataMap[key];
                     const title = '🗑️ ลบรายการจัดส่ง!';
                     const msg = `รายการของ ${deletedItem.customer || ''} (${deletedItem.branch || ''}) ถูกลบออกจากระบบแล้ว`;
-
                     showToast(title, msg, 'error');
                     sendChromeNotification(title, msg);
                 }
@@ -603,7 +630,7 @@
         card.innerHTML = `
             <span class="clinic-title">🏥 ${item.customer}</span>
             <div class="fw-bold text-secondary item-detail-hide-mobile" style="font-size:0.72rem;">📍 ${item.branch}</div>
-            <div class="item-detail mt-1" style="font-size:0.72rem;">⚙️️ ${item.machine}</div>
+            <div class="item-detail mt-1" style="font-size:0.72rem;">⚙️ ${item.machine}</div>
             <div class="d-flex justify-content-between align-items-center mt-1">
                 <small class="text-muted item-detail-hide-mobile" style="font-size:0.65rem;">Sale: ${item.sale || '-'}</small>
                 ${statusBadge}
@@ -813,8 +840,9 @@
             
             <div class="modal-footer bg-light d-flex justify-content-between p-2 mt-3 mx-n3 mb-n3 border-top">
                 <button type="button" onclick="deletePlan('${item.id}')" class="btn btn-outline-danger btn-sm">🗑️ ลบทิ้ง</button>
-                <div>
-                    <button type="button" onclick="openEditModal('${item.id}')" class="btn btn-warning btn-sm fw-bold me-1 text-dark">✏️ แก้ไข</button>
+                <div class="d-flex gap-1">
+                    <button type="button" onclick="printMachineLabel('${item.id}')" class="btn btn-primary btn-sm fw-bold">🖨️ ใบติดเครื่อง</button>
+                    <button type="button" onclick="openEditModal('${item.id}')" class="btn btn-warning btn-sm fw-bold text-dark">✏️ แก้ไข</button>
                     <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">ปิด</button>
                 </div>
             </div>
@@ -822,6 +850,45 @@
 
         const modal = new bootstrap.Modal(document.getElementById('detailModal'));
         modal.show();
+    }
+
+    // ฟังก์ชันสำหรับสร้างและพรีวิวใบติดเครื่อง (สไตล์ 3 - ชื่อใหญ่พิเศษ)
+    window.printMachineLabel = function(id) {
+        const item = items.find(i => i.id === id);
+        if (!item) return;
+
+        const ticketHTML = `
+            <div class="ticket-print-box">
+                <div style="font-size: 1.5rem; font-weight: 800; border-bottom: 2px solid #000; padding-bottom: 6px; margin-bottom: 8px; line-height: 1.2;">
+                    🏥 ${item.customer} ${item.branch ? `<br><span style="font-size: 1.1rem; color: #333;">(${item.branch})</span>` : ''}
+                </div>
+                <div style="font-size: 1.05rem; font-weight: 700; margin-bottom: 10px; background-color: #f1f5f9; padding: 4px 8px; border-radius: 4px;">
+                    📅 กำหนดส่ง: ${window.formatDateThai(item.date)}
+                </div>
+                <div style="border-top: 1px dashed #666; padding-top: 8px; margin-top: 8px;">
+                    <div style="font-size: 1.1rem; font-weight: 700;">[เครื่อง] ${item.machine}</div>
+                    <div style="font-size: 1rem; font-weight: 700; color: #0d6efd;">🏷️ S/N: ${item.machineSn || '-'}</div>
+                </div>
+                <div style="border-top: 1px dashed #666; padding-top: 8px; margin-top: 8px;">
+                    <div style="font-size: 1rem; font-weight: 700;">[UPS] ${item.ups || '-'}</div>
+                    <div style="font-size: 0.95rem; font-weight: 700; color: #0dcaf0;">🏷️ S/N: ${item.upsSn || '-'}</div>
+                </div>
+                ${item.notes && item.notes !== '-' ? `
+                <div style="border-top: 1px dashed #666; padding-top: 6px; margin-top: 8px; font-size: 0.85rem;">
+                    📝 หมายเหตุ: ${item.notes}
+                </div>` : ''}
+            </div>
+        `;
+
+        document.getElementById('ticketPreviewBody').innerHTML = ticketHTML;
+        document.getElementById('printableTicketArea').innerHTML = ticketHTML;
+
+        const detailModalEl = document.getElementById('detailModal');
+        const detailModal = bootstrap.Modal.getInstance(detailModalEl);
+        if (detailModal) detailModal.hide();
+
+        const ticketModal = new bootstrap.Modal(document.getElementById('ticketModal'));
+        ticketModal.show();
     }
 
     window.openEditModal = function(id) {
