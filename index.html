@@ -33,7 +33,7 @@
         .clinic-title { font-weight: bold; color: #1a252f; display: block; font-size: 0.82rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
         .large-input { height: 48px !important; font-size: 1rem !important; border: 1.5px solid #cbd5e1 !important; border-radius: 8px !important; padding: 10px 12px !important; background-color: #ffffff; }
-        .large-input:focus { border-color: #0d6efd !important; box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15) !important; }
+        .large-input:focus { border-color: #0d6efd !important; shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15) !important; }
         .large-textarea { font-size: 0.95rem !important; border: 1.5px solid #cbd5e1 !important; border-radius: 8px !important; background-color: #ffffff; }
         .form-label-custom { font-weight: 700; color: #334155; font-size: 0.88rem; margin-bottom: 4px; }
 
@@ -48,22 +48,27 @@
 
         .sync-badge { font-size: 0.75rem; padding: 4px 8px; border-radius: 12px; }
 
-        /* รูปแบบใบติดเครื่องสำหรับการพิมพ์ (Ticket Print Style) */
+        /* รูปแบบใบติดเครื่องสำหรับพรีวิวบนจอ */
         .ticket-print-box {
             position: relative;
-            border: 3px dashed #1e293b;
-            border-radius: 12px;
-            padding: 20px;
+            border: 2.5px dashed #1e293b;
+            border-radius: 10px;
+            padding: 14px 18px;
             background-color: #ffffff;
             color: #000000;
             font-family: 'Segoe UI', Tahoma, sans-serif;
-            margin-bottom: 25px;
-            page-break-after: always;
-            break-after: page;
+            margin-bottom: 16px;
+            box-sizing: border-box;
         }
 
         @media screen {
             #printableTicketArea { display: none; }
+        }
+
+        /* การตั้งค่าสำหรับการพิมพ์ลงกระดาษ A4 ให้รวมอยู่ในแผ่นเดียว */
+        @page {
+            size: A4 portrait;
+            margin: 8mm;
         }
 
         @media print {
@@ -77,10 +82,12 @@
                 display: block !important;
             }
             .ticket-print-box {
-                margin-bottom: 0 !important;
-                border: 3px dashed #000 !important;
-                page-break-after: always !important;
-                break-after: page !important;
+                margin-bottom: 12px !important;
+                border: 2.5px dashed #000 !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                page-break-after: auto !important;
+                break-after: auto !important;
             }
         }
 
@@ -404,18 +411,18 @@
     </div>
 </div>
 
-<!-- Modal 5: พรีวิวใบติดเครื่องก่อนพิมพ์ (พิมพ์ 2 แผ่น) -->
+<!-- Modal 5: พรีวิวใบติดเครื่องก่อนพิมพ์ (แสดง 2 แผ่นในหน้าเดียว) -->
 <div class="modal fade" id="ticketModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header bg-primary text-white p-3">
-                <h5 class="modal-title fw-bold">🏷️ พรีวิวใบติดประจำเครื่อง (ชุด 2 แผ่น: 1/2 และ 2/2)</h5>
+                <h5 class="modal-title fw-bold">🏷️ พรีวิวใบติดประจำเครื่อง (A4 แผ่นเดียว: 1/2 และ 2/2)</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-3" id="ticketPreviewBody" style="max-height: 75vh; overflow-y: auto;"></div>
             <div class="modal-footer bg-light p-2">
                 <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">ปิด</button>
-                <button type="button" onclick="window.print()" class="btn btn-success fw-bold fs-6 px-3">🖨️ พิมพ์ใบติดเครื่อง (2 แผ่น)</button>
+                <button type="button" onclick="window.print()" class="btn btn-success fw-bold fs-6 px-3">🖨️ พิมพ์ใบติดเครื่อง (A4 แผ่นเดียว)</button>
             </div>
         </div>
     </div>
@@ -862,50 +869,50 @@
         modal.show();
     }
 
-    // ฟังก์ชันสำหรับสร้างและพรีวิวใบติดเครื่อง (พิมพ์ 2 แผ่น 1/2 และ 2/2 พร้อมตัวหนังสือใหญ่หนาพิเศษ)
+    // ฟังก์ชันสร้างใบติดเครื่องรวม 2 ใบลงใน A4 แผ่นเดียว
     window.printMachineLabel = function(id) {
         const item = items.find(i => i.id === id);
         if (!item) return;
 
         const renderSingleSheet = (pageNo) => `
             <div class="ticket-print-box">
-                <!-- ป้ายระบุ 1/2 หรือ 2/2 มุมขวาบน -->
-                <div style="position: absolute; top: 16px; right: 16px; font-size: 1.6rem; font-weight: 900; background-color: #000; color: #fff; padding: 4px 14px; border-radius: 8px; font-family: monospace;">
+                <!-- ป้าย 1/2 หรือ 2/2 -->
+                <div style="position: absolute; top: 12px; right: 14px; font-size: 1.45rem; font-weight: 900; background-color: #000; color: #fff; padding: 2px 12px; border-radius: 6px; font-family: monospace;">
                     ${pageNo}/2
                 </div>
 
-                <!-- ชื่อคลินิก & สาขา (ตัวหนาและใหญ่พิเศษ) -->
-                <div style="font-size: 1.85rem; font-weight: 900; border-bottom: 3px solid #000; padding-bottom: 8px; margin-bottom: 12px; line-height: 1.25; padding-right: 75px; color: #000;">
+                <!-- ชื่อคลินิก & สาขา -->
+                <div style="font-size: 1.6rem; font-weight: 900; border-bottom: 2.5px solid #000; padding-bottom: 6px; margin-bottom: 8px; line-height: 1.2; padding-right: 70px; color: #000;">
                     🏥 ${item.customer}
-                    ${item.branch && item.branch !== '-' ? `<div style="font-size: 1.35rem; font-weight: 800; color: #1e293b;">(${item.branch})</div>` : ''}
+                    ${item.branch && item.branch !== '-' ? `<div style="font-size: 1.2rem; font-weight: 800; color: #1e293b;">(${item.branch})</div>` : ''}
                 </div>
 
-                <!-- กำหนดส่ง (ตัวหนาเด่นชัด) -->
-                <div style="font-size: 1.3rem; font-weight: 900; margin-bottom: 14px; background-color: #f1f5f9; padding: 6px 12px; border-radius: 6px; color: #000; display: inline-block;">
+                <!-- กำหนดส่ง -->
+                <div style="font-size: 1.15rem; font-weight: 900; margin-bottom: 8px; background-color: #f1f5f9; padding: 4px 10px; border-radius: 5px; color: #000; display: inline-block;">
                     📅 กำหนดส่ง: ${window.formatDateThai(item.date)}
                 </div>
 
-                <!-- รายละเอียดเครื่อง & SN -->
-                <div style="border-top: 2px dashed #64748b; padding-top: 10px; margin-top: 10px;">
-                    <div style="font-size: 1.4rem; font-weight: 900; color: #000;">[เครื่อง] ${item.machine}</div>
-                    <div style="font-size: 1.3rem; font-weight: 900; color: #0d6efd; margin-top: 2px;">🏷️ S/N: ${item.machineSn || '-'}</div>
+                <!-- รายละเอียดเครื่อง -->
+                <div style="border-top: 1.5px dashed #64748b; padding-top: 6px; margin-top: 6px;">
+                    <div style="font-size: 1.2rem; font-weight: 900; color: #000;">[เครื่อง] ${item.machine}</div>
+                    <div style="font-size: 1.15rem; font-weight: 900; color: #0d6efd; margin-top: 1px;">🏷️ S/N: ${item.machineSn || '-'}</div>
                 </div>
 
-                <!-- รายละเอียด UPS & SN -->
-                <div style="border-top: 2px dashed #64748b; padding-top: 10px; margin-top: 10px;">
-                    <div style="font-size: 1.3rem; font-weight: 900; color: #000;">[UPS] ${item.ups || '-'}</div>
-                    <div style="font-size: 1.2rem; font-weight: 900; color: #0891b2; margin-top: 2px;">🏷️ S/N: ${item.upsSn || '-'}</div>
+                <!-- รายละเอียด UPS -->
+                <div style="border-top: 1.5px dashed #64748b; padding-top: 6px; margin-top: 6px;">
+                    <div style="font-size: 1.15rem; font-weight: 900; color: #000;">[UPS] ${item.ups || '-'}</div>
+                    <div style="font-size: 1.1rem; font-weight: 900; color: #0891b2; margin-top: 1px;">🏷️ S/N: ${item.upsSn || '-'}</div>
                 </div>
 
-                <!-- หมายเหตุ (หากมีข้อมูล ให้แสดงกรอบเน้นสีแดงตัวใหญ่) -->
+                <!-- หมายเหตุ (แสดงหากมี) -->
                 ${item.notes && item.notes.trim() !== '' && item.notes !== '-' ? `
-                <div style="border-top: 2px solid #ef4444; padding-top: 8px; margin-top: 12px; background-color: #fef2f2; padding: 8px 12px; border-radius: 6px; border-left: 5px solid #dc2626;">
-                    <div style="font-size: 1.2rem; font-weight: 900; color: #dc2626;">📝 หมายเหตุ: ${item.notes}</div>
+                <div style="border-top: 2px solid #ef4444; padding-top: 6px; margin-top: 8px; background-color: #fef2f2; padding: 6px 10px; border-radius: 5px; border-left: 4px solid #dc2626;">
+                    <div style="font-size: 1.05rem; font-weight: 900; color: #dc2626;">📝 หมายเหตุ: ${item.notes}</div>
                 </div>` : ''}
             </div>
         `;
 
-        // รวม 2 แผ่น 1/2 และ 2/2 เข้าด้วยกัน
+        // รวม 2 แผ่นไว้ในหน้าเดียวกัน
         const fullTicketHTML = renderSingleSheet(1) + renderSingleSheet(2);
 
         document.getElementById('ticketPreviewBody').innerHTML = fullTicketHTML;
