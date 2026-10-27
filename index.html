@@ -65,12 +65,7 @@
             #printableTicketArea { display: none; }
         }
 
-        /* การตั้งค่าสำหรับการพิมพ์ลงกระดาษ A4 ให้รวมอยู่ในแผ่นเดียว */
-        @page {
-            size: A4 portrait;
-            margin: 8mm;
-        }
-
+        /* การตั้งค่าเริ่มต้นสำหรับการพิมพ์ (จะถูกเขียนทับด้วย JavaScript ตามประเภทปริ้นเตอร์) */
         @media print {
             body * { visibility: hidden; }
             #printableTicketArea, #printableTicketArea * { visibility: visible; }
@@ -80,14 +75,6 @@
                 top: 0;
                 width: 100%;
                 display: block !important;
-            }
-            .ticket-print-box {
-                margin-bottom: 12px !important;
-                border: 2.5px dashed #000 !important;
-                page-break-inside: avoid !important;
-                break-inside: avoid !important;
-                page-break-after: auto !important;
-                break-after: auto !important;
             }
         }
 
@@ -103,6 +90,8 @@
             .item-detail-hide-mobile { display: none; }
         }
     </style>
+    <!-- สร้าง style เปล่าไว้สำหรับตั้งค่าหน้ากระดาษก่อนสั่งปริ้น -->
+    <style id="dynamicPrintStyle"></style>
 </head>
 <body>
 
@@ -169,6 +158,7 @@
 </div>
 
 <!-- Modal เลือกปี/เดือนย้อนหลัง -->
+<!-- ... (ส่วนโค้ด Modal 1-4 เหมือนเดิม) ... -->
 <div class="modal fade picker-modal" id="yearPickerModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-sm">
         <div class="modal-content">
@@ -276,6 +266,7 @@
             </div>
             <div class="modal-body p-3">
                 <form id="addDeliveryForm">
+                    <!-- โค้ดฟอร์มเพิ่ม (คงเดิม) -->
                     <div class="row g-2 mb-2">
                         <div class="col-md-6">
                             <label class="form-label-custom">ชื่อบริษัท / คลินิก / ลูกค้า</label>
@@ -355,6 +346,7 @@
             </div>
             <div class="modal-body p-3">
                 <form id="editDeliveryForm">
+                    <!-- โค้ดฟอร์มแก้ไข (คงเดิม) -->
                     <div class="row g-2 mb-2">
                         <div class="col-md-6">
                             <label class="form-label-custom">ชื่อบริษัท / คลินิก / ลูกค้า</label>
@@ -365,7 +357,6 @@
                             <input type="text" class="form-control large-input" id="editBranch" required>
                         </div>
                     </div>
-
                     <div class="row g-2 mb-2">
                         <div class="col-md-6">
                             <label class="form-label-custom">วันที่กำหนดส่ง (Plan)</label>
@@ -376,7 +367,6 @@
                             <input type="text" class="form-control large-input" id="editSale">
                         </div>
                     </div>
-
                     <div class="row g-2 mb-2">
                         <div class="col-md-7">
                             <label class="form-label-custom">เครื่องอะไร</label>
@@ -387,7 +377,6 @@
                             <input type="text" class="form-control large-input" id="editMachineSn">
                         </div>
                     </div>
-
                     <div class="row g-2 mb-2">
                         <div class="col-md-7">
                             <label class="form-label-custom">UPS อะไร</label>
@@ -398,12 +387,10 @@
                             <input type="text" class="form-control large-input" id="editUpsSn">
                         </div>
                     </div>
-
                     <div class="mb-3">
                         <label class="form-label-custom">หมายเหตุเพิ่มเติม</label>
                         <textarea class="form-control large-textarea" id="editNotes" rows="2"></textarea>
                     </div>
-
                     <button type="submit" class="btn btn-warning btn-lg w-100 fw-bold">💾 บันทึกการแก้ไข</button>
                 </form>
             </div>
@@ -411,18 +398,18 @@
     </div>
 </div>
 
-<!-- Modal 5: พรีวิวใบติดเครื่องก่อนพิมพ์ (แสดง 2 แผ่นในหน้าเดียว) -->
+<!-- Modal 5: พรีวิวใบติดเครื่องก่อนพิมพ์ -->
 <div class="modal fade" id="ticketModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header bg-primary text-white p-3">
-                <h5 class="modal-title fw-bold">🏷️ พรีวิวใบติดประจำเครื่อง (A4 แผ่นเดียว: 1/2 และ 2/2)</h5>
+                <h5 class="modal-title fw-bold" id="previewTitle">🏷️ พรีวิวใบติดเครื่อง</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-3" id="ticketPreviewBody" style="max-height: 75vh; overflow-y: auto;"></div>
             <div class="modal-footer bg-light p-2">
                 <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">ปิด</button>
-                <button type="button" onclick="window.print()" class="btn btn-success fw-bold fs-6 px-3">🖨️ พิมพ์ใบติดเครื่อง (A4 แผ่นเดียว)</button>
+                <button type="button" onclick="window.print()" class="btn btn-success fw-bold fs-6 px-3">🖨️ สั่งพิมพ์ (Print)</button>
             </div>
         </div>
     </div>
@@ -438,6 +425,7 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getDatabase, ref, push, set, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
+    // ... (ส่วนแจ้งเตือน Firebase คงเดิม) ...
     function requestNotificationPermission() {
         if ("Notification" in window) {
             if (Notification.permission !== "granted" && Notification.permission !== "denied") {
@@ -517,44 +505,34 @@
     onValue(dbRef, (snapshot) => {
         const data = snapshot.val() || {};
         items = [];
-        
-        Object.keys(data).forEach(key => {
-            items.push({ id: key, ...data[key] });
-        });
+        Object.keys(data).forEach(key => { items.push({ id: key, ...data[key] }); });
 
         if (!isFirstLoad) {
             Object.keys(data).forEach(key => {
                 const newItem = data[key];
                 const oldItem = previousDataMap[key];
-
                 if (!oldItem) {
-                    const title = '📢 มีรายการจัดส่งใหม่!';
                     const msg = `${newItem.customer || ''} (${newItem.branch || ''}) - เครื่อง: ${newItem.machine || ''}`;
-                    showToast(title, msg, 'success');
-                    sendChromeNotification(title, msg);
+                    showToast('📢 มีรายการจัดส่งใหม่!', msg, 'success');
+                    sendChromeNotification('📢 มีรายการจัดส่งใหม่!', msg);
                 } else if (JSON.stringify(oldItem) !== JSON.stringify(newItem)) {
                     if (oldItem.status !== newItem.status) {
-                        const statusText = getStatusLabel(newItem.status);
-                        const title = '🔔 อัปเดตสถานะงาน!';
-                        const msg = `${newItem.customer || ''}: ${statusText}`;
-                        showToast(title, msg, 'info');
-                        sendChromeNotification(title, msg);
+                        const msg = `${newItem.customer || ''}: ${getStatusLabel(newItem.status)}`;
+                        showToast('🔔 อัปเดตสถานะงาน!', msg, 'info');
+                        sendChromeNotification('🔔 อัปเดตสถานะงาน!', msg);
                     } else {
-                        const title = '✏️ แก้ไขข้อมูลรายการ!';
                         const msg = `${newItem.customer || ''} (${newItem.branch || ''}) ถูกแก้ไขแล้ว`;
-                        showToast(title, msg, 'warning');
-                        sendChromeNotification(title, msg);
+                        showToast('✏️ แก้ไขข้อมูลรายการ!', msg, 'warning');
+                        sendChromeNotification('✏️ แก้ไขข้อมูลรายการ!', msg);
                     }
                 }
             });
-
             Object.keys(previousDataMap).forEach(key => {
                 if (!data[key]) {
                     const deletedItem = previousDataMap[key];
-                    const title = '🗑️ ลบรายการจัดส่ง!';
-                    const msg = `รายการของ ${deletedItem.customer || ''} (${deletedItem.branch || ''}) ถูกลบออกจากระบบแล้ว`;
-                    showToast(title, msg, 'error');
-                    sendChromeNotification(title, msg);
+                    const msg = `รายการของ ${deletedItem.customer || ''} ถูกลบออกจากระบบแล้ว`;
+                    showToast('🗑️ ลบรายการจัดส่ง!', msg, 'error');
+                    sendChromeNotification('🗑️ ลบรายการจัดส่ง!', msg);
                 }
             });
         } else {
@@ -568,12 +546,9 @@
     window.renderCalendar = function() {
         const calendarBody = document.getElementById('calendarBody');
         calendarBody.innerHTML = '';
-
         const year = viewDate.getFullYear();
         const month = viewDate.getMonth();
-
         document.getElementById('monthYearDisplay').innerText = `${thaiMonths[month]} ${year + 543}`;
-
         const firstDay = new Date(year, month, 1).getDay();
         const daysInMonth = new Date(year, month + 1, 0).getDate();
 
@@ -581,11 +556,9 @@
         for (let i = 0; i < 6; i++) {
             let row = document.createElement('tr');
             let hasDateInRow = false;
-
             for (let j = 0; j < 7; j++) {
                 let cell = document.createElement('td');
                 cell.className = 'calendar-day';
-
                 if (i === 0 && j < firstDay) {
                     cell.innerHTML = '';
                 } else if (date > daysInMonth) {
@@ -593,17 +566,12 @@
                 } else {
                     hasDateInRow = true;
                     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(date).padStart(2, '0')}`;
-                    
                     const isToday = (date === currentDate.getDate() && month === currentDate.getMonth() && year === currentDate.getFullYear());
                     if (isToday) cell.classList.add('today-highlight');
 
                     cell.innerHTML = `<div class="day-number ${isToday ? 'text-primary' : ''}">${date} ${isToday ? '•' : ''}</div>`;
-
                     const dayItems = items.filter(item => item.date === dateStr);
-                    dayItems.forEach(item => {
-                        cell.appendChild(createCardElement(item));
-                    });
-
+                    dayItems.forEach(item => { cell.appendChild(createCardElement(item)); });
                     date++;
                 }
                 row.appendChild(cell);
@@ -614,35 +582,24 @@
 
     function createCardElement(item) {
         const card = document.createElement('div');
-        
         const itemDate = new Date(item.date);
         const todayZero = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
         const diffDays = Math.ceil((itemDate - todayZero) / (1000 * 60 * 60 * 24));
 
         let statusClass = '';
-        if (item.status === 'shipped') {
-            statusClass = 'shipped';
-        } else if (item.status === 'completed') {
-            statusClass = 'completed';
-        } else if (item.status === 'cancelled') {
-            statusClass = 'cancelled';
-        } else if (diffDays >= 0 && diffDays <= 3) {
-            statusClass = 'urgent';
-        }
+        if (item.status === 'shipped') statusClass = 'shipped';
+        else if (item.status === 'completed') statusClass = 'completed';
+        else if (item.status === 'cancelled') statusClass = 'cancelled';
+        else if (diffDays >= 0 && diffDays <= 3) statusClass = 'urgent';
 
         card.className = `delivery-card ${statusClass}`;
         card.onclick = () => showDetail(item.id);
 
         let statusBadge = '';
-        if (item.status === 'pending') {
-            statusBadge = `<span class="badge bg-warning text-dark" style="font-size:0.6rem;">ยังไม่เตรียม</span>`;
-        } else if (item.status === 'completed') {
-            statusBadge = `<span class="badge bg-success" style="font-size:0.6rem;">✓ เตรียมเสร็จ</span>`;
-        } else if (item.status === 'shipped') {
-            statusBadge = `<span class="badge bg-info text-dark" style="font-size:0.6rem;">🚚 ขนส่งรับแล้ว</span>`;
-        } else if (item.status === 'cancelled') {
-            statusBadge = `<span class="badge bg-secondary" style="font-size:0.6rem;">🚫 ยกเลิก</span>`;
-        }
+        if (item.status === 'pending') statusBadge = `<span class="badge bg-warning text-dark" style="font-size:0.6rem;">ยังไม่เตรียม</span>`;
+        else if (item.status === 'completed') statusBadge = `<span class="badge bg-success" style="font-size:0.6rem;">✓ เตรียมเสร็จ</span>`;
+        else if (item.status === 'shipped') statusBadge = `<span class="badge bg-info text-dark" style="font-size:0.6rem;">🚚 ขนส่งรับแล้ว</span>`;
+        else if (item.status === 'cancelled') statusBadge = `<span class="badge bg-secondary" style="font-size:0.6rem;">🚫 ยกเลิก</span>`;
 
         card.innerHTML = `
             <span class="clinic-title">🏥 ${item.customer}</span>
@@ -656,6 +613,142 @@
         return card;
     }
 
+    // Modal UI Detail พร้อมปุ่มกดปริ้น 2 แบบ
+    window.showDetail = function(id) {
+        const item = items.find(i => i.id === id);
+        if (!item) return;
+
+        document.getElementById('detailTitle').innerText = `${item.customer} (${item.branch})`;
+        document.getElementById('detailBody').innerHTML = `
+            <div class="mb-3">
+                <label class="fw-bold mb-1">ปรับสถานะรายการ:</label>
+                <div class="d-grid gap-2">
+                    <div class="btn-group w-100" role="group">
+                        <button onclick="updateStatus('${item.id}', 'pending')" class="btn ${item.status === 'pending' ? 'btn-warning' : 'btn-outline-warning'} btn-sm fw-bold">ยังไม่เตรียม</button>
+                        <button onclick="updateStatus('${item.id}', 'completed')" class="btn ${item.status === 'completed' ? 'btn-success' : 'btn-outline-success'} btn-sm fw-bold">✓ เตรียมเสร็จ</button>
+                    </div>
+                    <div class="btn-group w-100" role="group">
+                        <button onclick="updateStatus('${item.id}', 'shipped')" class="btn ${item.status === 'shipped' ? 'btn-info' : 'btn-outline-info'} btn-sm fw-bold">🚚 ขนส่งมารับเครื่องไปแล้ว</button>
+                        <button onclick="updateStatus('${item.id}', 'cancelled')" class="btn ${item.status === 'cancelled' ? 'btn-secondary' : 'btn-outline-secondary'} btn-sm fw-bold">🚫 ยกเลิก</button>
+                    </div>
+                </div>
+            </div>
+            <hr>
+            <p class="mb-1">📅 <strong>กำหนดส่ง:</strong> ${window.formatDateThai(item.date)}</p>
+            <p class="mb-1">👤 <strong>ผู้ขาย (Sale):</strong> ${item.sale || '-'}</p>
+            <hr>
+            <p class="mb-1">⚙️ <strong>เครื่อง:</strong> ${item.machine} ${item.machineSn ? `<span class="badge bg-primary">SN: ${item.machineSn}</span>` : ''}</p>
+            <p class="mb-1">🔋 <strong>UPS:</strong> ${item.ups || '-'} ${item.upsSn ? `<span class="badge bg-info text-dark">SN: ${item.upsSn}</span>` : ''}</p>
+            <p class="mb-1">📝 <strong>หมายเหตุ:</strong></p>
+            <div class="bg-light p-2 rounded" style="font-size: 0.85rem;">${item.notes || '-'}</div>
+            
+            <div class="modal-footer bg-light d-flex flex-column p-2 mt-3 mx-n3 mb-n3 border-top gap-2">
+                <div class="d-flex justify-content-between w-100 gap-1 flex-wrap">
+                    <button type="button" onclick="printMachineLabel('${item.id}', 'A4')" class="btn btn-primary flex-fill fw-bold">🖨️ พิมพ์ A4 (3 ใบ)</button>
+                    <button type="button" onclick="printMachineLabel('${item.id}', 'D520')" class="btn btn-info text-white flex-fill fw-bold">🖨️ พิมพ์ D520 (แนวนอน)</button>
+                </div>
+                <div class="d-flex justify-content-between w-100">
+                    <button type="button" onclick="deletePlan('${item.id}')" class="btn btn-outline-danger btn-sm">🗑️ ลบทิ้ง</button>
+                    <div>
+                        <button type="button" onclick="openEditModal('${item.id}')" class="btn btn-warning btn-sm fw-bold text-dark">✏️ แก้ไข</button>
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">ปิด</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const modal = new bootstrap.Modal(document.getElementById('detailModal'));
+        modal.show();
+    }
+
+    // ฟังก์ชันสร้างใบติดเครื่อง รองรับ A4 และ D520
+    window.printMachineLabel = function(id, printerType) {
+        const item = items.find(i => i.id === id);
+        if (!item) return;
+
+        // เปลี่ยนหัวข้อ Modal ให้สอดคล้องกับประเภทที่เลือก
+        document.getElementById('previewTitle').innerHTML = printerType === 'A4' ? '🏷️ พรีวิว: A4 (แนวตั้ง 3 ใบ/แผ่น)' : '🏷️ พรีวิว: D520 (แนวนอน 3 ใบ)';
+
+        // เขียน CSS สำหรับการพิมพ์แบบไดนามิก
+        let printStyleCSS = "";
+        if (printerType === 'A4') {
+            // A4: บังคับ Portrait และรวมให้อยู่ในหน้าเดียวกันโดยไม่ตัดหน้า
+            printStyleCSS = `
+                @page { size: A4 portrait; margin: 8mm; }
+                @media print {
+                    .ticket-print-box { 
+                        page-break-inside: avoid !important; 
+                        margin-bottom: 12px !important;
+                        border: 2.5px dashed #000 !important;
+                    }
+                }
+            `;
+        } else if (printerType === 'D520') {
+            // D520: บังคับ Landscape และตัดหน้ากระดาษ (page-break-after) ทุกครั้งที่จบ 1 ใบ
+            printStyleCSS = `
+                @page { size: landscape; margin: 2mm; }
+                @media print {
+                    .ticket-print-box { 
+                        page-break-after: always !important; 
+                        margin-bottom: 0 !important;
+                        border: 2px dashed #000 !important;
+                        height: 95vh;
+                    }
+                }
+            `;
+        }
+        document.getElementById('dynamicPrintStyle').innerHTML = printStyleCSS;
+
+        const renderSingleSheet = (pageNo, total) => `
+            <div class="ticket-print-box">
+                <div style="position: absolute; top: 12px; right: 14px; font-size: 1.45rem; font-weight: 900; background-color: #000; color: #fff; padding: 2px 12px; border-radius: 6px; font-family: monospace;">
+                    ${pageNo}/${total}
+                </div>
+
+                <div style="font-size: 1.6rem; font-weight: 900; border-bottom: 2.5px solid #000; padding-bottom: 6px; margin-bottom: 8px; line-height: 1.2; padding-right: 70px; color: #000;">
+                    🏥 ${item.customer}
+                    ${item.branch && item.branch !== '-' ? `<div style="font-size: 1.2rem; font-weight: 800; color: #1e293b;">(${item.branch})</div>` : ''}
+                </div>
+
+                <div style="font-size: 1.15rem; font-weight: 900; margin-bottom: 8px; background-color: #f1f5f9; padding: 4px 10px; border-radius: 5px; color: #000; display: inline-block;">
+                    📅 กำหนดส่ง: ${window.formatDateThai(item.date)}
+                </div>
+
+                <div style="border-top: 1.5px dashed #64748b; padding-top: 6px; margin-top: 6px;">
+                    <div style="font-size: 1.2rem; font-weight: 900; color: #000;">[เครื่อง] ${item.machine}</div>
+                    <div style="font-size: 1.15rem; font-weight: 900; color: #0d6efd; margin-top: 1px;">🏷️ S/N: ${item.machineSn || '-'}</div>
+                </div>
+
+                <div style="border-top: 1.5px dashed #64748b; padding-top: 6px; margin-top: 6px;">
+                    <div style="font-size: 1.15rem; font-weight: 900; color: #000;">[UPS] ${item.ups || '-'}</div>
+                    <div style="font-size: 1.1rem; font-weight: 900; color: #0891b2; margin-top: 1px;">🏷️ S/N: ${item.upsSn || '-'}</div>
+                </div>
+
+                ${item.notes && item.notes.trim() !== '' && item.notes !== '-' ? `
+                <div style="border-top: 2px solid #ef4444; padding-top: 6px; margin-top: 8px; background-color: #fef2f2; padding: 6px 10px; border-radius: 5px; border-left: 4px solid #dc2626;">
+                    <div style="font-size: 1.05rem; font-weight: 900; color: #dc2626;">📝 หมายเหตุ: ${item.notes}</div>
+                </div>` : ''}
+            </div>
+        `;
+
+        // สั่งสร้างออกมา 3 ใบ (1/3, 2/3, 3/3) เสมอ
+        let fullTicketHTML = "";
+        for(let i = 1; i <= 3; i++) {
+            fullTicketHTML += renderSingleSheet(i, 3);
+        }
+
+        document.getElementById('ticketPreviewBody').innerHTML = fullTicketHTML;
+        document.getElementById('printableTicketArea').innerHTML = fullTicketHTML;
+
+        const detailModalEl = document.getElementById('detailModal');
+        const detailModal = bootstrap.Modal.getInstance(detailModalEl);
+        if (detailModal) detailModal.hide();
+
+        const ticketModal = new bootstrap.Modal(document.getElementById('ticketModal'));
+        ticketModal.show();
+    }
+
+    // ... (ส่วนฟังก์ชันอื่นๆ fastPaste, edit, delete, yearPicker ใช้งานได้เหมือนเดิม) ...
     window.autoParseAndPreview = function() {
         const rawText = document.getElementById('rawTextPaste').value;
         if (!rawText.trim()) return;
@@ -738,200 +831,51 @@
             Swal.fire('ข้อมูลไม่ครบ', 'กรุณากรอก ชื่อคลินิก, วันที่ Plan และ เครื่องอะไร ให้ครบถ้วน', 'warning');
             return;
         }
-
-        const newItem = {
-            customer: customer,
-            branch: document.getElementById('pvBranch').value || "-",
-            date: date,
-            sale: document.getElementById('pvSale').value || "-",
-            machine: machine,
-            machineSn: document.getElementById('pvMachineSn').value || "",
-            ups: document.getElementById('pvUps').value || "-",
-            upsSn: document.getElementById('pvUpsSn').value || "",
-            notes: document.getElementById('pvNotes').value || "-",
-            status: "pending"
-        };
-
-        push(dbRef, newItem);
-
+        push(dbRef, {
+            customer: customer, branch: document.getElementById('pvBranch').value || "-", date: date,
+            sale: document.getElementById('pvSale').value || "-", machine: machine, machineSn: document.getElementById('pvMachineSn').value || "",
+            ups: document.getElementById('pvUps').value || "-", upsSn: document.getElementById('pvUpsSn').value || "",
+            notes: document.getElementById('pvNotes').value || "-", status: "pending"
+        });
         document.getElementById('rawTextPaste').value = "";
-        document.getElementById('pvCustomer').value = "";
-        document.getElementById('pvBranch').value = "";
-        document.getElementById('pvMachine').value = "";
-        document.getElementById('pvMachineSn').value = "";
-        document.getElementById('pvUps').value = "";
-        document.getElementById('pvUpsSn').value = "";
-        document.getElementById('pvNotes').value = "";
-
-        const modal = bootstrap.Modal.getInstance(document.getElementById('quickPasteModal'));
-        modal.hide();
+        bootstrap.Modal.getInstance(document.getElementById('quickPasteModal')).hide();
     }
 
     window.openYearPickerModal = function() {
         startDecadeYear = Math.floor(viewDate.getFullYear() / 10) * 10;
         showYearGrid();
-        const modal = new bootstrap.Modal(document.getElementById('yearPickerModal'));
-        modal.show();
+        new bootstrap.Modal(document.getElementById('yearPickerModal')).show();
     }
-
     function showYearGrid() {
         document.getElementById('pickerTitle').innerText = `${startDecadeYear} - ${startDecadeYear + 9}`;
         const grid = document.getElementById('pickerGrid');
         grid.innerHTML = '';
-
         for (let y = startDecadeYear - 2; y <= startDecadeYear + 11; y++) {
             const item = document.createElement('div');
-            const isOutRange = (y < startDecadeYear || y > startDecadeYear + 9);
-            const isActive = (y === viewDate.getFullYear());
-
-            item.className = `picker-item ${isOutRange ? 'text-muted' : ''} ${isActive ? 'active' : ''}`;
+            item.className = `picker-item ${(y < startDecadeYear || y > startDecadeYear + 9) ? 'text-muted' : ''} ${y === viewDate.getFullYear() ? 'active' : ''}`;
             item.innerText = y;
-            item.onclick = () => selectYear(y);
+            item.onclick = () => { selectedTempYear = y; showMonthGrid(); };
             grid.appendChild(item);
         }
     }
-
-    function selectYear(selectedYear) {
-        selectedTempYear = selectedYear;
-        showMonthGrid();
-    }
-
     function showMonthGrid() {
         document.getElementById('pickerTitle').innerText = `เดือน (ค.ศ. ${selectedTempYear})`;
         const grid = document.getElementById('pickerGrid');
         grid.innerHTML = '';
-
         shortThaiMonths.forEach((m, index) => {
             const item = document.createElement('div');
-            const isActive = (selectedTempYear === viewDate.getFullYear() && index === viewDate.getMonth());
-
-            item.className = `picker-item ${isActive ? 'active' : ''}`;
+            item.className = `picker-item ${(selectedTempYear === viewDate.getFullYear() && index === viewDate.getMonth()) ? 'active' : ''}`;
             item.innerText = m;
-            item.onclick = () => selectMonth(index);
+            item.onclick = () => { viewDate.setFullYear(selectedTempYear); viewDate.setMonth(index); renderCalendar(); bootstrap.Modal.getInstance(document.getElementById('yearPickerModal')).hide(); };
             grid.appendChild(item);
         });
     }
-
-    function selectMonth(selectedMonth) {
-        viewDate.setFullYear(selectedTempYear);
-        viewDate.setMonth(selectedMonth);
-        renderCalendar();
-
-        const modalEl = document.getElementById('yearPickerModal');
-        const modal = bootstrap.Modal.getInstance(modalEl);
-        if (modal) modal.hide();
-    }
-
-    window.shiftDecade = function(offset) {
-        startDecadeYear += offset;
-        showYearGrid();
-    }
-
-    window.showDetail = function(id) {
-        const item = items.find(i => i.id === id);
-        if (!item) return;
-
-        document.getElementById('detailTitle').innerText = `${item.customer} (${item.branch})`;
-        document.getElementById('detailBody').innerHTML = `
-            <div class="mb-3">
-                <label class="fw-bold mb-1">ปรับสถานะรายการ:</label>
-                <div class="d-grid gap-2">
-                    <div class="btn-group w-100" role="group">
-                        <button onclick="updateStatus('${item.id}', 'pending')" class="btn ${item.status === 'pending' ? 'btn-warning' : 'btn-outline-warning'} btn-sm fw-bold">ยังไม่เตรียม</button>
-                        <button onclick="updateStatus('${item.id}', 'completed')" class="btn ${item.status === 'completed' ? 'btn-success' : 'btn-outline-success'} btn-sm fw-bold">✓ เตรียมเสร็จ</button>
-                    </div>
-                    <div class="btn-group w-100" role="group">
-                        <button onclick="updateStatus('${item.id}', 'shipped')" class="btn ${item.status === 'shipped' ? 'btn-info' : 'btn-outline-info'} btn-sm fw-bold">🚚 ขนส่งมารับเครื่องไปแล้ว</button>
-                        <button onclick="updateStatus('${item.id}', 'cancelled')" class="btn ${item.status === 'cancelled' ? 'btn-secondary' : 'btn-outline-secondary'} btn-sm fw-bold">🚫 ยกเลิก</button>
-                    </div>
-                </div>
-            </div>
-            <hr>
-            <p class="mb-1">📅 <strong>กำหนดส่ง:</strong> ${window.formatDateThai(item.date)}</p>
-            <p class="mb-1">👤 <strong>ผู้ขาย (Sale):</strong> ${item.sale || '-'}</p>
-            <hr>
-            <p class="mb-1">⚙️ <strong>เครื่อง:</strong> ${item.machine} ${item.machineSn ? `<span class="badge bg-primary">SN: ${item.machineSn}</span>` : ''}</p>
-            <p class="mb-1">🔋 <strong>UPS:</strong> ${item.ups || '-'} ${item.upsSn ? `<span class="badge bg-info text-dark">SN: ${item.upsSn}</span>` : ''}</p>
-            <p class="mb-1">📝 <strong>หมายเหตุ:</strong></p>
-            <div class="bg-light p-2 rounded" style="font-size: 0.85rem;">${item.notes || '-'}</div>
-            
-            <div class="modal-footer bg-light d-flex justify-content-between p-2 mt-3 mx-n3 mb-n3 border-top">
-                <button type="button" onclick="deletePlan('${item.id}')" class="btn btn-outline-danger btn-sm">🗑️ ลบทิ้ง</button>
-                <div class="d-flex gap-1">
-                    <button type="button" onclick="printMachineLabel('${item.id}')" class="btn btn-primary btn-sm fw-bold">🖨️ ใบติดเครื่อง</button>
-                    <button type="button" onclick="openEditModal('${item.id}')" class="btn btn-warning btn-sm fw-bold text-dark">✏️ แก้ไข</button>
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">ปิด</button>
-                </div>
-            </div>
-        `;
-
-        const modal = new bootstrap.Modal(document.getElementById('detailModal'));
-        modal.show();
-    }
-
-    // ฟังก์ชันสร้างใบติดเครื่องรวม 2 ใบลงใน A4 แผ่นเดียว
-    window.printMachineLabel = function(id) {
-        const item = items.find(i => i.id === id);
-        if (!item) return;
-
-        const renderSingleSheet = (pageNo) => `
-            <div class="ticket-print-box">
-                <!-- ป้าย 1/2 หรือ 2/2 -->
-                <div style="position: absolute; top: 12px; right: 14px; font-size: 1.45rem; font-weight: 900; background-color: #000; color: #fff; padding: 2px 12px; border-radius: 6px; font-family: monospace;">
-                    ${pageNo}/2
-                </div>
-
-                <!-- ชื่อคลินิก & สาขา -->
-                <div style="font-size: 1.6rem; font-weight: 900; border-bottom: 2.5px solid #000; padding-bottom: 6px; margin-bottom: 8px; line-height: 1.2; padding-right: 70px; color: #000;">
-                    🏥 ${item.customer}
-                    ${item.branch && item.branch !== '-' ? `<div style="font-size: 1.2rem; font-weight: 800; color: #1e293b;">(${item.branch})</div>` : ''}
-                </div>
-
-                <!-- กำหนดส่ง -->
-                <div style="font-size: 1.15rem; font-weight: 900; margin-bottom: 8px; background-color: #f1f5f9; padding: 4px 10px; border-radius: 5px; color: #000; display: inline-block;">
-                    📅 กำหนดส่ง: ${window.formatDateThai(item.date)}
-                </div>
-
-                <!-- รายละเอียดเครื่อง -->
-                <div style="border-top: 1.5px dashed #64748b; padding-top: 6px; margin-top: 6px;">
-                    <div style="font-size: 1.2rem; font-weight: 900; color: #000;">[เครื่อง] ${item.machine}</div>
-                    <div style="font-size: 1.15rem; font-weight: 900; color: #0d6efd; margin-top: 1px;">🏷️ S/N: ${item.machineSn || '-'}</div>
-                </div>
-
-                <!-- รายละเอียด UPS -->
-                <div style="border-top: 1.5px dashed #64748b; padding-top: 6px; margin-top: 6px;">
-                    <div style="font-size: 1.15rem; font-weight: 900; color: #000;">[UPS] ${item.ups || '-'}</div>
-                    <div style="font-size: 1.1rem; font-weight: 900; color: #0891b2; margin-top: 1px;">🏷️ S/N: ${item.upsSn || '-'}</div>
-                </div>
-
-                <!-- หมายเหตุ (แสดงหากมี) -->
-                ${item.notes && item.notes.trim() !== '' && item.notes !== '-' ? `
-                <div style="border-top: 2px solid #ef4444; padding-top: 6px; margin-top: 8px; background-color: #fef2f2; padding: 6px 10px; border-radius: 5px; border-left: 4px solid #dc2626;">
-                    <div style="font-size: 1.05rem; font-weight: 900; color: #dc2626;">📝 หมายเหตุ: ${item.notes}</div>
-                </div>` : ''}
-            </div>
-        `;
-
-        // รวม 2 แผ่นไว้ในหน้าเดียวกัน
-        const fullTicketHTML = renderSingleSheet(1) + renderSingleSheet(2);
-
-        document.getElementById('ticketPreviewBody').innerHTML = fullTicketHTML;
-        document.getElementById('printableTicketArea').innerHTML = fullTicketHTML;
-
-        const detailModalEl = document.getElementById('detailModal');
-        const detailModal = bootstrap.Modal.getInstance(detailModalEl);
-        if (detailModal) detailModal.hide();
-
-        const ticketModal = new bootstrap.Modal(document.getElementById('ticketModal'));
-        ticketModal.show();
-    }
+    window.shiftDecade = function(offset) { startDecadeYear += offset; showYearGrid(); }
 
     window.openEditModal = function(id) {
         const item = items.find(i => i.id === id);
         if (!item) return;
-        
         currentEditId = id;
-        
         document.getElementById('editCustomer').value = item.customer || "";
         document.getElementById('editBranch').value = item.branch || "";
         document.getElementById('editDeliveryDate').value = item.date || "";
@@ -941,130 +885,56 @@
         document.getElementById('editUps').value = item.ups || "";
         document.getElementById('editUpsSn').value = item.upsSn || "";
         document.getElementById('editNotes').value = item.notes || "";
-
-        const detailModalEl = document.getElementById('detailModal');
-        const detailModal = bootstrap.Modal.getInstance(detailModalEl);
-        if(detailModal) detailModal.hide();
-
-        const editModal = new bootstrap.Modal(document.getElementById('editModal'));
-        editModal.show();
+        bootstrap.Modal.getInstance(document.getElementById('detailModal')).hide();
+        new bootstrap.Modal(document.getElementById('editModal')).show();
     }
 
     document.getElementById('editDeliveryForm').addEventListener('submit', function(e) {
         e.preventDefault();
         if (!currentEditId) return;
-
         const currentItem = items.find(i => i.id === currentEditId);
-
-        const updatedItem = {
-            customer: document.getElementById('editCustomer').value,
-            branch: document.getElementById('editBranch').value,
-            date: document.getElementById('editDeliveryDate').value,
-            sale: document.getElementById('editSale').value,
-            machine: document.getElementById('editMachine').value,
-            machineSn: document.getElementById('editMachineSn').value,
-            ups: document.getElementById('editUps').value,
-            upsSn: document.getElementById('editUpsSn').value,
-            notes: document.getElementById('editNotes').value,
-            status: currentItem ? currentItem.status : 'pending'
-        };
-        
-        const itemRef = ref(db, `delivery_items/${currentEditId}`);
-        update(itemRef, updatedItem).then(() => {
-            const modal = bootstrap.Modal.getInstance(document.getElementById('editModal'));
-            modal.hide();
-        }).catch((error) => {
-            Swal.fire('ข้อผิดพลาด', error.message, 'error');
-        });
+        update(ref(db, `delivery_items/${currentEditId}`), {
+            customer: document.getElementById('editCustomer').value, branch: document.getElementById('editBranch').value,
+            date: document.getElementById('editDeliveryDate').value, sale: document.getElementById('editSale').value,
+            machine: document.getElementById('editMachine').value, machineSn: document.getElementById('editMachineSn').value,
+            ups: document.getElementById('editUps').value, upsSn: document.getElementById('editUpsSn').value,
+            notes: document.getElementById('editNotes').value, status: currentItem ? currentItem.status : 'pending'
+        }).then(() => { bootstrap.Modal.getInstance(document.getElementById('editModal')).hide(); });
     });
 
     window.updateStatus = function(id, newStatus) {
-        const itemRef = ref(db, `delivery_items/${id}`);
-        update(itemRef, { status: newStatus });
-        
-        const modalEl = document.getElementById('detailModal');
-        const modal = bootstrap.Modal.getInstance(modalEl);
-        if(modal) modal.hide();
+        update(ref(db, `delivery_items/${id}`), { status: newStatus });
+        bootstrap.Modal.getInstance(document.getElementById('detailModal')).hide();
     }
-
     window.deletePlan = function(id) {
-        Swal.fire({
-            title: 'ยืนยันการลบ?',
-            text: "คุณแน่ใจหรือไม่ว่าต้องการลบรายการนี้!",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: 'ใช่, ลบเลย!',
-            cancelButtonText: 'ยกเลิก'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                const itemRef = ref(db, `delivery_items/${id}`);
-                remove(itemRef);
-                
-                const modalEl = document.getElementById('detailModal');
-                const modal = bootstrap.Modal.getInstance(modalEl);
-                if(modal) modal.hide();
-            }
+        Swal.fire({ title: 'ยืนยันการลบ?', text: "คุณแน่ใจหรือไม่ว่าต้องการลบรายการนี้!", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#3085d6', confirmButtonText: 'ใช่, ลบเลย!', cancelButtonText: 'ยกเลิก' }).then((result) => {
+            if (result.isConfirmed) { remove(ref(db, `delivery_items/${id}`)); bootstrap.Modal.getInstance(document.getElementById('detailModal')).hide(); }
         });
     }
-
-    window.changeMonth = function(offset) {
-        viewDate.setMonth(viewDate.getMonth() + offset);
-        renderCalendar();
-    }
-
-    window.goToToday = function() {
-        viewDate = new Date();
-        renderCalendar();
-    }
+    window.changeMonth = function(offset) { viewDate.setMonth(viewDate.getMonth() + offset); renderCalendar(); }
+    window.goToToday = function() { viewDate = new Date(); renderCalendar(); }
 
     document.getElementById('addDeliveryForm').addEventListener('submit', function(e) {
         e.preventDefault();
-        const newItem = {
-            customer: document.getElementById('customer').value,
-            branch: document.getElementById('branch').value,
-            date: document.getElementById('deliveryDate').value,
-            sale: document.getElementById('sale').value,
-            machine: document.getElementById('machine').value,
-            machineSn: document.getElementById('machineSn').value,
-            ups: document.getElementById('ups').value,
-            upsSn: document.getElementById('upsSn').value,
-            notes: document.getElementById('notes').value,
-            status: "pending"
-        };
-        
-        push(dbRef, newItem);
-
-        const modal = bootstrap.Modal.getInstance(document.getElementById('addModal'));
-        modal.hide();
+        push(dbRef, {
+            customer: document.getElementById('customer').value, branch: document.getElementById('branch').value,
+            date: document.getElementById('deliveryDate').value, sale: document.getElementById('sale').value,
+            machine: document.getElementById('machine').value, machineSn: document.getElementById('machineSn').value,
+            ups: document.getElementById('ups').value, upsSn: document.getElementById('upsSn').value,
+            notes: document.getElementById('notes').value, status: "pending"
+        });
+        bootstrap.Modal.getInstance(document.getElementById('addModal')).hide();
         this.reset();
     });
 
     window.exportToExcel = function() {
-        const excelData = items.map(i => {
-            let statusText = "ยังไม่เตรียม";
-            if (i.status === 'completed') statusText = "เตรียมเสร็จแล้ว";
-            if (i.status === 'shipped') statusText = "ขนส่งมารับเครื่องไปแล้ว";
-            if (i.status === 'cancelled') statusText = "ยกเลิกแพลนแล้ว";
-
-            return {
-                'ชื่อคลินิก/ลูกค้า': i.customer,
-                'สาขา/สถานที่ส่ง': i.branch,
-                'กำหนดส่ง (Plan)': window.formatDateThai(i.date),
-                'Sale': i.sale,
-                'เครื่องอะไร': i.machine,
-                'SN เครื่อง': i.machineSn,
-                'UPS อะไร': i.ups,
-                'SN UPS': i.upsSn,
-                'หมายเหตุเพิ่มเติม': i.notes,
-                'สถานะการจัด': statusText
-            };
-        });
-
-        const worksheet = XLSX.utils.json_to_sheet(excelData);
+        const excelData = items.map(i => ({
+            'ชื่อคลินิก/ลูกค้า': i.customer, 'สาขา/สถานที่ส่ง': i.branch, 'กำหนดส่ง (Plan)': window.formatDateThai(i.date),
+            'Sale': i.sale, 'เครื่องอะไร': i.machine, 'SN เครื่อง': i.machineSn, 'UPS อะไร': i.ups, 'SN UPS': i.upsSn,
+            'หมายเหตุเพิ่มเติม': i.notes, 'สถานะการจัด': getStatusLabel(i.status)
+        }));
         const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "แผนจัดส่งสินค้า");
+        XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(excelData), "แผนจัดส่งสินค้า");
         XLSX.writeFile(workbook, "รายงานการส่งสินค้า.xlsx");
     }
 
