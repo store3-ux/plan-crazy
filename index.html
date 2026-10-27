@@ -158,7 +158,6 @@
 </div>
 
 <!-- Modal เลือกปี/เดือนย้อนหลัง -->
-<!-- ... (ส่วนโค้ด Modal 1-4 เหมือนเดิม) ... -->
 <div class="modal fade picker-modal" id="yearPickerModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-sm">
         <div class="modal-content">
@@ -240,6 +239,16 @@
                                 </div>
                             </div>
 
+                            <!-- ส่วนติ๊กเลือกมี Cartridge -->
+                            <div class="mb-3 p-2 rounded" style="background-color: #fff5f5; border: 1px solid #fecaca;">
+                                <div class="form-check d-flex align-items-center">
+                                    <input class="form-check-input mt-0" type="checkbox" id="pvHasCartridge" style="transform: scale(1.5); margin-right: 12px;">
+                                    <label class="form-check-label fw-bold text-danger" for="pvHasCartridge" style="font-size: 1.05rem;">
+                                        📦 มี Cartridge <small class="text-muted">(หากติ๊กจะพิมพ์ใบติดเครื่อง 3 ใบ)</small>
+                                    </label>
+                                </div>
+                            </div>
+
                             <div class="mb-3">
                                 <label class="form-label-custom">หมายเหตุเพิ่มเติม</label>
                                 <textarea class="form-control large-textarea" id="pvNotes" rows="2"></textarea>
@@ -266,7 +275,6 @@
             </div>
             <div class="modal-body p-3">
                 <form id="addDeliveryForm">
-                    <!-- โค้ดฟอร์มเพิ่ม (คงเดิม) -->
                     <div class="row g-2 mb-2">
                         <div class="col-md-6">
                             <label class="form-label-custom">ชื่อบริษัท / คลินิก / ลูกค้า</label>
@@ -311,6 +319,16 @@
                         </div>
                     </div>
 
+                    <!-- ส่วนติ๊กเลือกมี Cartridge -->
+                    <div class="mb-3 p-2 rounded" style="background-color: #fff5f5; border: 1px solid #fecaca;">
+                        <div class="form-check d-flex align-items-center">
+                            <input class="form-check-input mt-0" type="checkbox" id="hasCartridge" style="transform: scale(1.5); margin-right: 12px;">
+                            <label class="form-check-label fw-bold text-danger" for="hasCartridge" style="font-size: 1.05rem;">
+                                📦 มี Cartridge <small class="text-muted">(หากติ๊กจะพิมพ์ใบติดเครื่อง 3 ใบ)</small>
+                            </label>
+                        </div>
+                    </div>
+
                     <div class="mb-3">
                         <label class="form-label-custom">หมายเหตุเพิ่มเติม</label>
                         <textarea class="form-control large-textarea" id="notes" rows="2" placeholder="ระบุหมายเหตุ..."></textarea>
@@ -346,7 +364,6 @@
             </div>
             <div class="modal-body p-3">
                 <form id="editDeliveryForm">
-                    <!-- โค้ดฟอร์มแก้ไข (คงเดิม) -->
                     <div class="row g-2 mb-2">
                         <div class="col-md-6">
                             <label class="form-label-custom">ชื่อบริษัท / คลินิก / ลูกค้า</label>
@@ -387,6 +404,17 @@
                             <input type="text" class="form-control large-input" id="editUpsSn">
                         </div>
                     </div>
+
+                    <!-- ส่วนติ๊กเลือกมี Cartridge -->
+                    <div class="mb-3 p-2 rounded" style="background-color: #fff5f5; border: 1px solid #fecaca;">
+                        <div class="form-check d-flex align-items-center">
+                            <input class="form-check-input mt-0" type="checkbox" id="editHasCartridge" style="transform: scale(1.5); margin-right: 12px;">
+                            <label class="form-check-label fw-bold text-danger" for="editHasCartridge" style="font-size: 1.05rem;">
+                                📦 มี Cartridge <small class="text-muted">(หากติ๊กจะพิมพ์ใบติดเครื่อง 3 ใบ)</small>
+                            </label>
+                        </div>
+                    </div>
+
                     <div class="mb-3">
                         <label class="form-label-custom">หมายเหตุเพิ่มเติม</label>
                         <textarea class="form-control large-textarea" id="editNotes" rows="2"></textarea>
@@ -425,7 +453,6 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getDatabase, ref, push, set, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-    // ... (ส่วนแจ้งเตือน Firebase คงเดิม) ...
     function requestNotificationPermission() {
         if ("Notification" in window) {
             if (Notification.permission !== "granted" && Notification.permission !== "denied") {
@@ -604,7 +631,7 @@
         card.innerHTML = `
             <span class="clinic-title">🏥 ${item.customer}</span>
             <div class="fw-bold text-secondary item-detail-hide-mobile" style="font-size:0.72rem;">📍 ${item.branch}</div>
-            <div class="item-detail mt-1" style="font-size:0.72rem;">⚙️ ${item.machine}</div>
+            <div class="item-detail mt-1" style="font-size:0.72rem;">⚙️ ${item.machine} ${item.hasCartridge ? '<span class="text-danger fw-bold ms-1" title="มี Cartridge">[+Cart]</span>' : ''}</div>
             <div class="d-flex justify-content-between align-items-center mt-1">
                 <small class="text-muted item-detail-hide-mobile" style="font-size:0.65rem;">Sale: ${item.sale || '-'}</small>
                 ${statusBadge}
@@ -613,10 +640,12 @@
         return card;
     }
 
-    // Modal UI Detail พร้อมปุ่มกดปริ้น 2 แบบ
+    // Modal UI Detail พร้อมแสดงข้อมูล Cartridge และปุ่มกดปริ้น 2 แบบ
     window.showDetail = function(id) {
         const item = items.find(i => i.id === id);
         if (!item) return;
+
+        const totalPages = item.hasCartridge ? 3 : 2;
 
         document.getElementById('detailTitle').innerText = `${item.customer} (${item.branch})`;
         document.getElementById('detailBody').innerHTML = `
@@ -639,12 +668,13 @@
             <hr>
             <p class="mb-1">⚙️ <strong>เครื่อง:</strong> ${item.machine} ${item.machineSn ? `<span class="badge bg-primary">SN: ${item.machineSn}</span>` : ''}</p>
             <p class="mb-1">🔋 <strong>UPS:</strong> ${item.ups || '-'} ${item.upsSn ? `<span class="badge bg-info text-dark">SN: ${item.upsSn}</span>` : ''}</p>
-            <p class="mb-1">📝 <strong>หมายเหตุ:</strong></p>
+            <p class="mb-2 mt-2">📦 <strong>Cartridge:</strong> ${item.hasCartridge ? '<span class="badge bg-danger fs-6 py-1 px-2">✅ มี Cartridge (พิมพ์ใบ 3 ใบ)</span>' : '<span class="badge bg-secondary">❌ ไม่มี Cartridge</span>'}</p>
+            <p class="mb-1 mt-2">📝 <strong>หมายเหตุ:</strong></p>
             <div class="bg-light p-2 rounded" style="font-size: 0.85rem;">${item.notes || '-'}</div>
             
             <div class="modal-footer bg-light d-flex flex-column p-2 mt-3 mx-n3 mb-n3 border-top gap-2">
                 <div class="d-flex justify-content-between w-100 gap-1 flex-wrap">
-                    <button type="button" onclick="printMachineLabel('${item.id}', 'A4')" class="btn btn-primary flex-fill fw-bold">🖨️ พิมพ์ A4 (3 ใบ)</button>
+                    <button type="button" onclick="printMachineLabel('${item.id}', 'A4')" class="btn btn-primary flex-fill fw-bold">🖨️ พิมพ์ A4 (${totalPages} ใบ)</button>
                     <button type="button" onclick="printMachineLabel('${item.id}', 'D520')" class="btn btn-info text-white flex-fill fw-bold">🖨️ พิมพ์ D520 (แนวนอน)</button>
                 </div>
                 <div class="d-flex justify-content-between w-100">
@@ -661,18 +691,22 @@
         modal.show();
     }
 
-    // ฟังก์ชันสร้างใบติดเครื่อง รองรับ A4 และ D520
+    // ฟังก์ชันสร้างใบติดเครื่อง เช็คว่าต้องปริ้น 2 หรือ 3 ใบ ตาม item.hasCartridge
     window.printMachineLabel = function(id, printerType) {
         const item = items.find(i => i.id === id);
         if (!item) return;
 
-        // เปลี่ยนหัวข้อ Modal ให้สอดคล้องกับประเภทที่เลือก
-        document.getElementById('previewTitle').innerHTML = printerType === 'A4' ? '🏷️ พรีวิว: A4 (แนวตั้ง 3 ใบ/แผ่น)' : '🏷️ พรีวิว: D520 (แนวนอน 3 ใบ)';
+        // เช็คเงื่อนไขว่าต้องปริ้นกี่แผ่น
+        const totalPages = item.hasCartridge ? 3 : 2;
 
-        // เขียน CSS สำหรับการพิมพ์แบบไดนามิก
+        // เปลี่ยนหัวข้อ Modal
+        const titleA4 = `🏷️ พรีวิว: A4 (แนวตั้ง ${totalPages} ใบ/แผ่น)`;
+        const titleD520 = `🏷️ พรีวิว: D520 (แนวนอน ${totalPages} ใบ)`;
+        document.getElementById('previewTitle').innerHTML = printerType === 'A4' ? titleA4 : titleD520;
+
+        // เขียน CSS สำหรับการพิมพ์
         let printStyleCSS = "";
         if (printerType === 'A4') {
-            // A4: บังคับ Portrait และรวมให้อยู่ในหน้าเดียวกันโดยไม่ตัดหน้า
             printStyleCSS = `
                 @page { size: A4 portrait; margin: 8mm; }
                 @media print {
@@ -684,7 +718,6 @@
                 }
             `;
         } else if (printerType === 'D520') {
-            // D520: บังคับ Landscape และตัดหน้ากระดาษ (page-break-after) ทุกครั้งที่จบ 1 ใบ
             printStyleCSS = `
                 @page { size: landscape; margin: 2mm; }
                 @media print {
@@ -731,10 +764,10 @@
             </div>
         `;
 
-        // สั่งสร้างออกมา 3 ใบ (1/3, 2/3, 3/3) เสมอ
+        // สั่งสร้างออกมาตามจำนวน totalPages (2 หรือ 3 ใบ)
         let fullTicketHTML = "";
-        for(let i = 1; i <= 3; i++) {
-            fullTicketHTML += renderSingleSheet(i, 3);
+        for(let i = 1; i <= totalPages; i++) {
+            fullTicketHTML += renderSingleSheet(i, totalPages);
         }
 
         document.getElementById('ticketPreviewBody').innerHTML = fullTicketHTML;
@@ -748,7 +781,7 @@
         ticketModal.show();
     }
 
-    // ... (ส่วนฟังก์ชันอื่นๆ fastPaste, edit, delete, yearPicker ใช้งานได้เหมือนเดิม) ...
+    // Auto Parse & Fast Paste Logic
     window.autoParseAndPreview = function() {
         const rawText = document.getElementById('rawTextPaste').value;
         if (!rawText.trim()) return;
@@ -811,6 +844,10 @@
             }
         }
 
+        // เช็คคำว่า cartridge หรือ catridge ในข้อความ แล้วติ๊กถูกให้อัตโนมัติ
+        const hasCart = /cartridge|catridge/i.test(rawText);
+        document.getElementById('pvHasCartridge').checked = hasCart;
+
         document.getElementById('pvCustomer').value = customer || "";
         document.getElementById('pvBranch').value = branch || "";
         document.getElementById('pvDate').value = dateStr || "";
@@ -832,12 +869,21 @@
             return;
         }
         push(dbRef, {
-            customer: customer, branch: document.getElementById('pvBranch').value || "-", date: date,
-            sale: document.getElementById('pvSale').value || "-", machine: machine, machineSn: document.getElementById('pvMachineSn').value || "",
-            ups: document.getElementById('pvUps').value || "-", upsSn: document.getElementById('pvUpsSn').value || "",
-            notes: document.getElementById('pvNotes').value || "-", status: "pending"
+            customer: customer, 
+            branch: document.getElementById('pvBranch').value || "-", 
+            date: date,
+            sale: document.getElementById('pvSale').value || "-", 
+            machine: machine, 
+            machineSn: document.getElementById('pvMachineSn').value || "",
+            ups: document.getElementById('pvUps').value || "-", 
+            upsSn: document.getElementById('pvUpsSn').value || "",
+            notes: document.getElementById('pvNotes').value || "-", 
+            hasCartridge: document.getElementById('pvHasCartridge').checked, // บันทึกค่า Cartridge
+            status: "pending"
         });
+        
         document.getElementById('rawTextPaste').value = "";
+        document.getElementById('pvHasCartridge').checked = false; // รีเซ็ตติ๊ก
         bootstrap.Modal.getInstance(document.getElementById('quickPasteModal')).hide();
     }
 
@@ -846,6 +892,7 @@
         showYearGrid();
         new bootstrap.Modal(document.getElementById('yearPickerModal')).show();
     }
+    
     function showYearGrid() {
         document.getElementById('pickerTitle').innerText = `${startDecadeYear} - ${startDecadeYear + 9}`;
         const grid = document.getElementById('pickerGrid');
@@ -858,6 +905,7 @@
             grid.appendChild(item);
         }
     }
+    
     function showMonthGrid() {
         document.getElementById('pickerTitle').innerText = `เดือน (ค.ศ. ${selectedTempYear})`;
         const grid = document.getElementById('pickerGrid');
@@ -885,6 +933,8 @@
         document.getElementById('editUps').value = item.ups || "";
         document.getElementById('editUpsSn').value = item.upsSn || "";
         document.getElementById('editNotes').value = item.notes || "";
+        document.getElementById('editHasCartridge').checked = item.hasCartridge || false; // ดึงค่าเดิมมาแสดง
+
         bootstrap.Modal.getInstance(document.getElementById('detailModal')).hide();
         new bootstrap.Modal(document.getElementById('editModal')).show();
     }
@@ -894,11 +944,17 @@
         if (!currentEditId) return;
         const currentItem = items.find(i => i.id === currentEditId);
         update(ref(db, `delivery_items/${currentEditId}`), {
-            customer: document.getElementById('editCustomer').value, branch: document.getElementById('editBranch').value,
-            date: document.getElementById('editDeliveryDate').value, sale: document.getElementById('editSale').value,
-            machine: document.getElementById('editMachine').value, machineSn: document.getElementById('editMachineSn').value,
-            ups: document.getElementById('editUps').value, upsSn: document.getElementById('editUpsSn').value,
-            notes: document.getElementById('editNotes').value, status: currentItem ? currentItem.status : 'pending'
+            customer: document.getElementById('editCustomer').value, 
+            branch: document.getElementById('editBranch').value,
+            date: document.getElementById('editDeliveryDate').value, 
+            sale: document.getElementById('editSale').value,
+            machine: document.getElementById('editMachine').value, 
+            machineSn: document.getElementById('editMachineSn').value,
+            ups: document.getElementById('editUps').value, 
+            upsSn: document.getElementById('editUpsSn').value,
+            notes: document.getElementById('editNotes').value, 
+            hasCartridge: document.getElementById('editHasCartridge').checked, // อัปเดตค่า Cartridge
+            status: currentItem ? currentItem.status : 'pending'
         }).then(() => { bootstrap.Modal.getInstance(document.getElementById('editModal')).hide(); });
     });
 
@@ -906,6 +962,7 @@
         update(ref(db, `delivery_items/${id}`), { status: newStatus });
         bootstrap.Modal.getInstance(document.getElementById('detailModal')).hide();
     }
+    
     window.deletePlan = function(id) {
         Swal.fire({ title: 'ยืนยันการลบ?', text: "คุณแน่ใจหรือไม่ว่าต้องการลบรายการนี้!", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#3085d6', confirmButtonText: 'ใช่, ลบเลย!', cancelButtonText: 'ยกเลิก' }).then((result) => {
             if (result.isConfirmed) { remove(ref(db, `delivery_items/${id}`)); bootstrap.Modal.getInstance(document.getElementById('detailModal')).hide(); }
@@ -917,11 +974,17 @@
     document.getElementById('addDeliveryForm').addEventListener('submit', function(e) {
         e.preventDefault();
         push(dbRef, {
-            customer: document.getElementById('customer').value, branch: document.getElementById('branch').value,
-            date: document.getElementById('deliveryDate').value, sale: document.getElementById('sale').value,
-            machine: document.getElementById('machine').value, machineSn: document.getElementById('machineSn').value,
-            ups: document.getElementById('ups').value, upsSn: document.getElementById('upsSn').value,
-            notes: document.getElementById('notes').value, status: "pending"
+            customer: document.getElementById('customer').value, 
+            branch: document.getElementById('branch').value,
+            date: document.getElementById('deliveryDate').value, 
+            sale: document.getElementById('sale').value,
+            machine: document.getElementById('machine').value, 
+            machineSn: document.getElementById('machineSn').value,
+            ups: document.getElementById('ups').value, 
+            upsSn: document.getElementById('upsSn').value,
+            notes: document.getElementById('notes').value, 
+            hasCartridge: document.getElementById('hasCartridge').checked, // บันทึกค่า Cartridge
+            status: "pending"
         });
         bootstrap.Modal.getInstance(document.getElementById('addModal')).hide();
         this.reset();
@@ -929,9 +992,17 @@
 
     window.exportToExcel = function() {
         const excelData = items.map(i => ({
-            'ชื่อคลินิก/ลูกค้า': i.customer, 'สาขา/สถานที่ส่ง': i.branch, 'กำหนดส่ง (Plan)': window.formatDateThai(i.date),
-            'Sale': i.sale, 'เครื่องอะไร': i.machine, 'SN เครื่อง': i.machineSn, 'UPS อะไร': i.ups, 'SN UPS': i.upsSn,
-            'หมายเหตุเพิ่มเติม': i.notes, 'สถานะการจัด': getStatusLabel(i.status)
+            'ชื่อคลินิก/ลูกค้า': i.customer, 
+            'สาขา/สถานที่ส่ง': i.branch, 
+            'กำหนดส่ง (Plan)': window.formatDateThai(i.date),
+            'Sale': i.sale, 
+            'เครื่องอะไร': i.machine, 
+            'SN เครื่อง': i.machineSn, 
+            'UPS อะไร': i.ups, 
+            'SN UPS': i.upsSn,
+            'มี Cartridge': i.hasCartridge ? '✅ มี' : '❌ ไม่มี', // ส่งออก Excel ด้วย
+            'หมายเหตุเพิ่มเติม': i.notes, 
+            'สถานะการจัด': getStatusLabel(i.status)
         }));
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(excelData), "แผนจัดส่งสินค้า");
